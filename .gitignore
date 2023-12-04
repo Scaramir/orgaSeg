@@ -5,3 +5,4 @@ venv/
 # exclude data
 
 infos/
+data/
