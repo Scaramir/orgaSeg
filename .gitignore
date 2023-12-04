@@ -3,4 +3,5 @@
 venv/
 
 # exclude data
-data/
+
+infos/

@@ -1,42 +1,80 @@
+import cv2
+import numpy as np
+import tifffile as tiff
 # std
 from os import listdir
 from pathlib import Path
 from argparse import ArgumentParser
 # 3rd party
+from PIL import Image
 from pipe import filter
 
 
+# ------------------- #
+# SETUP CONFIGURATION #
+# ------------------- #
 # Parse arguments
-
 parser = ArgumentParser(
     prog='preprocess_dataset.py',
     description='Preprocess dataset to make it more uniform.'
 )
-parser.add_argument("DATASET_PATH", help="Path to dataset folder.")
+parser.add_argument("raw_img_path", help="Path to raw image folder.",
+                    default="./../data/raw_data/raw_images", required=False)
+parser.add_argument("raw_anno_path", help="Path to raw annotation folder containing JSON files.",
+                    default="./../data/raw_data/annotations_json", required=False)
 parser.add_argument("-o", "--out", help="Path to output folder.",
-                    default=None, required=False)
+                    default="./../data/preprocessed", required=False)
+parser.add_argument("-s", "--size", help="Size of output images.",
+                    default=512, required=False)
+parser.add_argument("-r", "--replace_vignette", help="Replace vignette with median color.",
+                    default=False, required=False)
 
 args = parser.parse_args()
 
-DATASET_PATH = Path(args.DATASET_PATH)
-OUTPUT_PATH = Path(args.out or args.DATASET_PATH + '_preprocessed')
+RAW_IMG_PATH = Path(args.raw_img_path)
+RAW_ANNO_PATH = Path(args.raw_anno_path)
+OUTPUT_PATH = Path(args.out)
 
-if not OUTPUT_PATH.exists():
-    OUTPUT_PATH.mkdir()
+if not RAW_IMG_PATH.exists():
+    raise FileNotFoundError(
+        f"Path to raw images does not exist: {RAW_IMG_PATH}")
 
+if not RAW_ANNO_PATH.exists():
+    raise FileNotFoundError(
+        f"Path to raw annotations does not exist: {RAW_ANNO_PATH}")
+
+OUTPUT_PATH.mkdir(exist_ok=True, parents=True)
+
+# ------------------- #
+# PREPROCESS DATASET  #
+# ------------------- #
 
 # Get image filenames and filter them
 
-img_filenames = listdir(DATASET_PATH)
+temp_path = Path('./../data/preprocessed/temp')
 
-print(img_filenames)  # TODO: remove, only for testing
+for img_name in Path.glob(RAW_IMG_PATH, '*.jpg').stem:
+    # convert jpg to tif
+    img_stem = img_name.stem
+    img = Image.open(img_name)
+    img.save(img_name.replace('.jpg', '.tiff'))
 
+for img_name in Path.glob(RAW_IMG_PATH, '*.tif*'):
+    # if *small* in name, continue
+    if ('small' in img_name.stem) or ('1_tiff_oaf.jpg' in img_name.stem):
+        continue
 
-filtered_img_filenames = list(img_filenames
-                              | filter(lambda x: not x.endswith('.jpg')))
+    # if not, resize image
+    img = Image.open(img_name)
+    # detect vignette and replace with median color
+    img = np.array(img)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+    if args.replace_vignette:
+        median = np.median(img)
+        img[img == 0] = median
+    
+    img = Image.fromarray(img)
+    img = img.resize((args.size, args.size))
 
-print(filtered_img_filenames)  # TODO: remove, only for testing
-
-
-# Load images and preprocess them
+    img.save(OUTPUT_PATH / "images" / img_name.stem.replace('.tiff', '_resized.tiff'))
