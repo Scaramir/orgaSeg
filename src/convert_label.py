@@ -20,19 +20,18 @@ parser = ArgumentParser(
     prog='convert_label',
     description='Convert QuPath project annotations to tiff maps.'
 )
-parser.add_argument("ANNOTATIONS_PATH", help="Path to exported annotations of QuPath.")
-parser.add_argument("DATASET_PATH", help="Path to dataset folder.")
-parser.add_argument("-o", "--out", help="Path to output folder.",
-                    default=None, required=False)
+parser.add_argument("-a", "--ANNOTATIONS_PATH", help="Path to exported annotations of QuPath.",
+                    default="../data/raw_data/annotations_json", required=False)
+parser.add_argument("-d", "--DATASET_PATH", help="Path to image dataset folder.",
+                    default="../data/raw_data/raw_images", required=False)
+parser.add_argument("-o", "--out", help="Path to output folder for created masks.",
+                    default="../data/preprocessed/anno_to_mask", required=False)
 
 args = parser.parse_args()
 
 ANNOTATIONS_PATH = Path(args.ANNOTATIONS_PATH)  # Directory containing of QuPath project
 DATASET_PATH = Path(args.DATASET_PATH)  # Directory containing images
-OUTPUT_PATH = Path(args.out or args.ANNOTATIONS_PATH + '_converted')
-
-if not OUTPUT_PATH.exists():
-    OUTPUT_PATH.mkdir()
+OUTPUT_PATH = Path(args.out)
 
 
 # Read annotations & images
@@ -63,7 +62,8 @@ def get_img_of_annotation_file(annotation_file: str) -> Image.Image:
     return img  # np.array(img)
 
 
-annotation_file_names = listdir(ANNOTATIONS_PATH)
+annotation_file_names = list(filter(lambda f: f.endswith(".geojson"),
+                                    listdir(ANNOTATIONS_PATH)))
 annotations = {
     f: get_annotations(ANNOTATIONS_PATH / f)
     for f in annotation_file_names}
