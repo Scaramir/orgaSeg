@@ -86,6 +86,7 @@ for annotation_file_name in annotation_file_names:
     segmentation_map = Image.new("L", img_size)
     segmentation_draw = ImageDraw.Draw(segmentation_map)
     segmentation_step_size = 255 // sum(map(len, img_annotations.values()))
+    segmentation_fill = 255
     for class_label, class_annotations in img_annotations.items():
         draw = ImageDraw.Draw(class_maps[class_label])
         step_size = 255 // len(class_annotations)
@@ -95,7 +96,8 @@ for annotation_file_name in annotation_file_names:
             draw.polygon(list(map(tuple, annotation_coordinates)),
                          fill=255 - i * step_size)
             segmentation_draw.polygon(list(map(tuple, annotation_coordinates)),
-                                      fill=255 - i * segmentation_step_size)
+                                      fill=segmentation_fill)
+            segmentation_fill -= segmentation_step_size
 
     export_tiff(list(class_maps.values()),
                 annotation_file_name, "-".join(class_maps.keys()))
