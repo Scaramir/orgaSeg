@@ -54,12 +54,16 @@ def get_annotations(annotations_file: Path
         return {}
 
 
-def get_img_of_annotation_file(annotation_file: str) -> Image.Image:
+def get_size_of_annotation_file(annotation_file: str) -> Tuple[int, int]:
     image_file = DATASET_PATH / (annotation_file[:-8] + '.tiff')
     if not image_file.exists():
         image_file = DATASET_PATH / (annotation_file[:-8] + '.jpg')
     img = Image.open(image_file)
-    return img  # np.array(img)
+    return img.size
+
+
+def export_tiff(img: List[Image], basename: str, details: str) -> None:
+    imwrite(OUTPUT_PATH / f'{basename}_{details}.tiff', np.array(img))
 
 
 annotation_file_names = list(filter(lambda f: f.endswith(".geojson"),
@@ -67,8 +71,8 @@ annotation_file_names = list(filter(lambda f: f.endswith(".geojson"),
 annotations = {
     f: get_annotations(ANNOTATIONS_PATH / f)
     for f in annotation_file_names}
-image_files: Dict[str, Image.Image] = {
-    f: get_img_of_annotation_file(f)
+image_sizes = {
+    f: get_size_of_annotation_file(f)
     for f in annotation_file_names}
 
 
@@ -76,9 +80,12 @@ image_files: Dict[str, Image.Image] = {
 
 for annotation_file_name in annotation_file_names:
     img_annotations = annotations[annotation_file_name]
-    img_size = image_files[annotation_file_name].size
+    img_size = image_sizes[annotation_file_name]
     class_maps = {class_label: Image.new("L", img_size)
                   for class_label in CLASSES}
+    segmentation_map = Image.new("L", img_size)
+    segmentation_draw = ImageDraw.Draw(segmentation_map)
+    segmentation_step_size = 255 // sum(map(len, img_annotations.values()))
     for class_label, class_annotations in img_annotations.items():
         draw = ImageDraw.Draw(class_maps[class_label])
         step_size = 255 // len(class_annotations)
@@ -87,7 +94,10 @@ for annotation_file_name in annotation_file_names:
                 annotation_coordinates = annotation_coordinates[0]  # required for special cases
             draw.polygon(list(map(tuple, annotation_coordinates)),
                          fill=255 - i * step_size)
+            segmentation_draw.polygon(list(map(tuple, annotation_coordinates)),
+                                      fill=255 - i * segmentation_step_size)
 
-    annotations_img = np.array(list(class_maps.values()))
-    annotations_img_name = f'{annotation_file_name}_{"-".join(class_maps.keys())}.tiff'
-    imwrite(OUTPUT_PATH / annotations_img_name, annotations_img)
+    export_tiff(list(class_maps.values()),
+                annotation_file_name, "-".join(class_maps.keys()))
+    export_tiff([segmentation_map],
+                annotation_file_name, "segmentation")
