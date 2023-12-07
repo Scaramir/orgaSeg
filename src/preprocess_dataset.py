@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 # 3rd party
 from PIL import Image
 from pipe import filter
+from scipy.signal import convolve2d
 
 
 # ------------------- #
@@ -48,6 +49,20 @@ OUTPUT_PATH.mkdir(exist_ok=True, parents=True)
 # ------------------- #
 # PREPROCESS DATASET  #
 # ------------------- #
+
+# Code to remove vignette from images
+
+# kernel
+kernel_size = 5
+kernel = np.ones((kernel_size, kernel_size)) / kernel_size**2
+
+
+def remove_vignette_inplace(img: np.ndarray) -> None:  # img shape (h, w)
+    img_mask = img != 0
+    img_mask = convolve2d(img_mask, kernel, mode='same')
+    vignette_mask = img_mask < 0.5
+    img[vignette_mask] = np.median(img[~vignette_mask])
+
 
 # Get image filenames and filter them
 

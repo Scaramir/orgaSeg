@@ -2,3 +2,5 @@ pipe~=2.0
 numpy~=1.26.2
 Pillow~=10.1.0
 tifffile~=2023.9.26
+opencv-python~=4.8.1.78
+scipy~=1.11.4
