@@ -26,9 +26,7 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
 3. Config vom nnUNet in Python/Pytorch-UNet anwenden und da implementieren
 4. Versch. netze vergleichen
 5. KLassifizieruzng diskutieren, dann weiter machen
-
-
-3. unet selber 
+6. unet selber 
 
 
 # Directory structure
