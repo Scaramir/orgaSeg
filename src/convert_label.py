@@ -11,11 +11,9 @@ from PIL import Image, ImageDraw
 
 
 # Constants
-
 CLASSES = {"Filled in", "Early branching", "Cyst", "Burned out", "Ring", "Branched"}
 
 # Parse arguments
-
 parser = ArgumentParser(
     prog='convert_label',
     description='Convert QuPath project annotations to tiff maps.'
@@ -26,8 +24,7 @@ parser.add_argument("-d", "--DATASET_PATH", help="Path to image dataset folder."
                     default="../data/raw_data/raw_images", required=False)
 parser.add_argument("-o", "--out", help="Path to output folder for created masks.",
                     default="../data/preprocessed/anno_to_mask", required=False)
-
-args = parser.parse_args()
+args, _ = parser.parse_known_args()  # Ignore unexpected arguments
 
 ANNOTATIONS_PATH = Path(args.ANNOTATIONS_PATH)  # Directory containing of QuPath project
 DATASET_PATH = Path(args.DATASET_PATH)  # Directory containing images
@@ -35,7 +32,6 @@ OUTPUT_PATH = Path(args.out)
 
 
 # Read annotations & images
-
 def get_annotations(annotations_file: Path
                     ) -> Dict[str, List[List[Tuple[int, int]]]]:
     try:
@@ -62,8 +58,8 @@ def get_size_of_annotation_file(annotation_file: str) -> Tuple[int, int]:
     return img.size
 
 
-def export_tiff(img: List[Image], basename: str, details: str) -> None:
-    imwrite(OUTPUT_PATH / f'{basename}_{details}.tiff', np.array(img))
+def export_tiff(img: List[any], basename: str, details: str) -> None:
+    imwrite(OUTPUT_PATH / f'{basename}_{details}.tiff', np.array(img, dtype=np.uint8))
 
 
 annotation_file_names = list(filter(lambda f: f.endswith(".geojson"),
@@ -77,7 +73,6 @@ image_sizes = {
 
 
 # Create maps
-
 for annotation_file_name in annotation_file_names:
     img_annotations = annotations[annotation_file_name]
     img_size = image_sizes[annotation_file_name]
