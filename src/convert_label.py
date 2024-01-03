@@ -6,6 +6,7 @@ from json import load
 from typing import List, Tuple, Dict
 # 3rd party
 import numpy as np
+from tqdm import tqdm
 from tifffile import imwrite
 from PIL import Image, ImageDraw
 
@@ -73,7 +74,7 @@ image_sizes = {
 
 
 # Create maps
-for annotation_file_name in annotation_file_names:
+for annotation_file_name in tqdm(annotation_file_names, desc="Creating maps"):
     img_annotations = annotations[annotation_file_name]
     img_size = image_sizes[annotation_file_name]
     class_maps = {class_label: Image.new("L", img_size)
@@ -94,7 +95,6 @@ for annotation_file_name in annotation_file_names:
                                       fill=segmentation_fill)
             segmentation_fill -= segmentation_step_size
 
-    export_tiff(list(class_maps.values()),
-                annotation_file_name, "-".join(class_maps.keys()))
-    export_tiff([segmentation_map],
-                annotation_file_name, "segmentation")
+    export_tiff(segmentation_map, annotation_file_name, "segmentation")
+
+print("Done!")
