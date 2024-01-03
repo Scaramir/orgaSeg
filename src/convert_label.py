@@ -60,7 +60,7 @@ def get_size_of_annotation_file(annotation_file: str) -> Tuple[int, int]:
 
 
 def export_tiff(img: List[any], basename: str, details: str) -> None:
-    imwrite(OUTPUT_PATH / f'{basename}_{details}.tiff', np.array(img, dtype=np.uint8))
+    imwrite(OUTPUT_PATH / f'{Path(basename).stem}_{details}.tiff', np.array(img, dtype=np.uint8))
 
 
 annotation_file_names = list(filter(lambda f: f.endswith(".geojson"),
