@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
-import tifffile as tiff
-import os, sys
+import warnings
 # std
 from pathlib import Path
 from argparse import ArgumentParser
@@ -9,9 +8,10 @@ from argparse import ArgumentParser
 from PIL import Image
 from tqdm import tqdm
 from pipe import filter
-from scipy.signal import convolve2d
 from typing import List
 from pathlib import Path
+from tifffile import imwrite
+from scipy.signal import convolve2d
 
 
 # ------------------- #
@@ -60,9 +60,9 @@ def convert_all_jpg_to_tiff(raw_image_path: Path) -> None:
     Args:
         raw_image_path (Path): path to the folder containing the JPEGs. 
     """
-    for img_name in Path.glob(raw_image_path, '*.jpg').stem:
+    for _, img_name in enumerate(tqdm(list(Path.glob(raw_image_path, '*.jpg')), desc="Converting JPEGs to TIFFs")):
         img = Image.open(img_name)
-        img.save(img_name.replace('.jpg', '.tiff'))
+        img.save(str(img_name).replace('.jpg', '.tiff'))
     return 
 
 def four_crop(img: np.ndarray) -> List[np.ndarray]:
@@ -101,20 +101,38 @@ def remove_vignette_inplace(img: np.ndarray, kernel_size: int = 5) -> None:  # i
 # ------------------- #
 # STUFF TO EXECUTE    #
 # ------------------- #
+# Establish consistency in image format
+convert_all_jpg_to_tiff(RAW_IMG_PATH)
+
+# Get all image and mask files
+img_files = list(RAW_IMG_PATH.glob("*.tif*"))
 mask_files = list(RAW_MASK_PATH.glob("*.tiff"))
+
+# Check if files exist
 if len(mask_files) == 0:
     raise FileNotFoundError(f"No mask files found in {RAW_MASK_PATH}")
 
-for i, img_name in enumerate(tqdm(Path.glob(RAW_IMG_PATH, '*.tif*'), desc="Preprocessing images")):
+if len(img_files) == 0:
+    raise FileNotFoundError(f"No image files found in {RAW_IMG_PATH}")
+
+if len(img_files) != len(mask_files):
+    warnings.warn("Number of image files does not match number of mask files !")
+
+# The hard work
+for i, img_name in enumerate(tqdm(img_files, desc="Preprocessing images")):
     # if *small* or other weird stuff in name, continue
     if ('small' in img_name.stem) or ('1_tiff_oaf.jpg' in img_name.stem):
         continue
+    # More explicit error messages
+    try:
+        if img_name.stem not in mask_files[i].stem:
+            raise FileNotFoundError(f"Mask file not found for image {img_name}. Probably no matching prefix due to wrong naming convention.")
+    except IndexError as e:
+        print(str(e), "Probably no mask file found for image", img_name, ".\nAborting...")
+        break
 
-    if img_name not in mask_files[i]:
-        raise FileNotFoundError(f"Mask file not found for image {img_name}. Probably wrong order of files or no matching prefix.")
-
-    img = Image.open(img_name)
-    mask = Image.open(mask_files[i])
+    img = np.array(Image.open(img_name))
+    mask = np.array(Image.open(mask_files[i]))
     # convert to greyscale image
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -125,13 +143,12 @@ for i, img_name in enumerate(tqdm(Path.glob(RAW_IMG_PATH, '*.tif*'), desc="Prepr
     mask_crops = four_crop(mask)
 
     for j, (img_crop, mask_crop) in enumerate(zip(img_crops, mask_crops)):
-        img_crop = Image.fromarray(img_crop)
-        mask_crop = Image.fromarray(mask_crop)
         if args.size:
+            img_crop = Image.fromarray(img_crop)
+            mask_crop = Image.fromarray(mask_crop)
             img_crop = img_crop.resize((args.size, args.size))
             mask_crop = mask_crop.resize((args.size, args.size))
-        img_crop.save(OUTPUT_PATH / "images" / img_name.stem.replace('.tiff', f'_{j}.tiff'))
-        mask_crop.save(OUTPUT_PATH / "labels" / mask_files[i].stem.replace('.tiff', f'_{j}.tiff'))
-    # TODO: test if this works and fix if not (probably not) ! 
+        imwrite(OUTPUT_PATH / "images" / img_name.name.replace('.tiff', f'_{j}.tiff'), img_crop)
+        imwrite(OUTPUT_PATH / "labels" / mask_files[i].name.replace('.tiff', f'_{j}.tiff'), mask_crop)
 
 print("DONE!")
