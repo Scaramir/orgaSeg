@@ -1,8 +1,6 @@
-*.pyc
-
-venv/
-
 # exclude data
+*.pyc
+venv/
 
 infos/
 data/

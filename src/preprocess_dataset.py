@@ -7,6 +7,7 @@ from pathlib import Path
 from argparse import ArgumentParser
 # 3rd party
 from PIL import Image
+from tqdm import tqdm
 from pipe import filter
 from scipy.signal import convolve2d
 from typing import List
@@ -23,7 +24,7 @@ parser = ArgumentParser(
 )
 parser.add_argument("raw_img_path", help="Path to raw image folder.",
                     default="./../data/raw_data/raw_images", required=False)
-parser.add_argument("raw_anno_path", help="Path to raw annotation folder containing JSON files.",
+parser.add_argument("raw_mask_path", help="Path to raw annotation folder containing JSON files.",
                     default="./../data/raw_data/annotations_json", required=False)
 parser.add_argument("-o", "--out", help="Path to output folder.",
                     default="./../data/preprocessed", required=False)
@@ -31,27 +32,24 @@ parser.add_argument("-s", "--size", help="Size of output images.",
                     default=512, required=False)
 parser.add_argument("-r", "--replace_vignette", help="Replace vignette with median color.",
                     default=False, required=False)
-
 args = parser.parse_args()
 
 RAW_IMG_PATH = Path(args.raw_img_path)
-RAW_ANNO_PATH = Path(args.raw_anno_path)
+RAW_MASK_PATH = Path(args.raw_mask_path)
 OUTPUT_PATH = Path(args.out)
 
 if not RAW_IMG_PATH.exists():
     raise FileNotFoundError(
         f"Path to raw images does not exist: {RAW_IMG_PATH}")
 
-if not RAW_ANNO_PATH.exists():
+if not RAW_MASK_PATH.exists():
     raise FileNotFoundError(
-        f"Path to raw annotations does not exist: {RAW_ANNO_PATH}")
+        f"Path to raw annotations does not exist: {RAW_MASK_PATH}")
 
 OUTPUT_PATH.mkdir(exist_ok=True, parents=True)
 
-temp_path = Path('./../data/preprocessed/temp')
-
 # Kernel setup to remove vignette from images:
-kernel_size = 5.
+kernel_size = 5
 
 # ------------------- #
 # PREPROCESS DATASET  #
@@ -85,7 +83,13 @@ def four_crop(img: np.ndarray) -> List[np.ndarray]:
     ]
     return crops
 
-def remove_vignette_inplace(img: np.ndarray, kernel_size: float = 5.) -> None:  # img shape (h, w)
+def remove_vignette_inplace(img: np.ndarray, kernel_size: int = 5) -> None:  # img shape (h, w)
+    """Removes vignette from image by replacing the vignette with the median color of the image.
+
+    Args:
+        img (np.ndarray): image to remove vignette from.
+        kernel_size (int, optional): size of kernel to use for convolution. Defaults to 5.
+    """
     kernel = np.ones((kernel_size, kernel_size)) / kernel_size**2
     img_mask = img != 0
     img_mask = convolve2d(img_mask, kernel, mode='same')
@@ -97,26 +101,34 @@ def remove_vignette_inplace(img: np.ndarray, kernel_size: float = 5.) -> None:  
 # ------------------- #
 # STUFF TO EXECUTE    #
 # ------------------- #
-for img_name in Path.glob(RAW_IMG_PATH, '*.tif*'):
-    # if *small* or other weird shit in name, continue
+mask_files = list(RAW_MASK_PATH.glob("*.tiff"))
+if len(mask_files) == 0:
+    raise FileNotFoundError(f"No mask files found in {RAW_MASK_PATH}")
+
+for i, img_name in enumerate(tqdm(Path.glob(RAW_IMG_PATH, '*.tif*'), desc="Preprocessing images")):
+    # if *small* or other weird stuff in name, continue
     if ('small' in img_name.stem) or ('1_tiff_oaf.jpg' in img_name.stem):
         continue
 
+    if img_name not in mask_files[i]:
+        raise FileNotFoundError(f"Mask file not found for image {img_name}. Probably wrong order of files or no matching prefix.")
+
     img = Image.open(img_name)
-    img = np.array(img)
+    mask = Image.open(mask_files[i])
     # convert to greyscale image
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     if args.replace_vignette:
         img = remove_vignette_inplace(img, kernel_size)
 
-    # TODO:
-    # apply four crop to image and mask 
-    # save the four crops by extending the original file name with the crop index
+    img_crops = four_crop(img)
+    mask_crops = four_crop(mask)
 
-
-    # TODO: save each crop with desired size²
-    img = Image.fromarray(img)
-    img = img.resize((args.size, args.size))
-    img.save(OUTPUT_PATH / "images" / img_name.stem.replace('.tiff', '_resized.tiff'))
-
+    for j, (img_crop, mask_crop) in enumerate(zip(img_crops, mask_crops)):
+        img_crop = Image.fromarray(img_crop)
+        mask_crop = Image.fromarray(mask_crop)
+        img_crop = img.resize((args.size, args.size))
+        mask_crop = mask.resize((args.size, args.size))
+        img_crop.save(OUTPUT_PATH / "images" / img_name.stem.replace('.tiff', f'_{j}.tiff'))
+        mask_crop.save(OUTPUT_PATH / "masks" / mask_files[i].stem.replace('.tiff', f'_{j}.tiff'))
+    # TODO: test if this works and fix if not (probably not) ! 
