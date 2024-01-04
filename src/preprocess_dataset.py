@@ -126,9 +126,9 @@ for i, img_name in enumerate(tqdm(img_files, desc="Preprocessing images")):
     # More explicit error messages
     try:
         if img_name.stem not in mask_files[i].stem:
-            raise FileNotFoundError(f"Mask file not found for image {img_name}. Probably no matching prefix due to wrong naming convention.")
+            raise FileNotFoundError(f"Mask file not found for image {img_name.stem}. Probably no matching prefix due to wrong file namings.")
     except IndexError as e:
-        print(str(e), "Probably no mask file found for image", img_name, ".\nAborting...")
+        print(str(e), "More images than masks found", img_name, ".\nAborting preprocessing...")
         break
 
     img = np.array(Image.open(img_name))
