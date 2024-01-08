@@ -137,7 +137,7 @@ for i, img_name in enumerate(tqdm(img_files, desc="Preprocessing images")):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     if args.replace_vignette:
-        img = remove_vignette_inplace(img, kernel_size)
+        remove_vignette_inplace(img, kernel_size)
 
     img_crops = four_crop(img)
     mask_crops = four_crop(mask)

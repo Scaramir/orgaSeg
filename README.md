@@ -9,7 +9,8 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
    - Unabhängiges Skript, um es ein mal auszuführen:
      - [x] alle in TIFFs umwandeln
      - [x] alle in greyscale speichern, aka nur 1 Farbkanal
-     - [x] optional: Vignette durch Median des Bildes ersetzen? -> Testen, on das so wirklich funktioniert, oder ob überhaupt notwendig
+     - [x] optional: Vignette durch Median des Bildes ersetzen? 
+       - [ ] -> Testen, on das so wirklich funktioniert, oder ob überhaupt notwendig
      - Bilder sinnvoll umbenennen? Vergrößerungsfaktor im Namen behalten. Ansonsten durchnummerieren. Tabelle mit original namen zu neuem namen speichern?
      - [x] Bilder Vierteln um mehr Bilder zu generien 
      - [x] die abspeichern
