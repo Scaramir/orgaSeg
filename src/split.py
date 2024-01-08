@@ -23,9 +23,9 @@ parser = ArgumentParser(
 parser.add_argument("--pic_folder_path", help="The root-folder containing the required subdirectories",
                     default="./../data/preprocessed", required=False)
 parser.add_argument("--output_folder_path", help="The output path to write the images to",
-                    default=None, required=False)
+                    default="./../data/preprocessed", required=False)
 parser.add_argument("--class_dirs_to_use", help="Classes/subdirectories to include in the data sets",
-                    default=["images", "masks"], nargs='*', required=False)
+                    default=["images", "labels"], nargs='*', required=False)
 parser.add_argument("--train_ratio", help="Ratio of data to be used for training between 0 and 1",
                     default=0.8, required=False)  # .7
 parser.add_argument("--test_ratio", help="Ratio of data to be used for testing between 0 and 1",
@@ -46,7 +46,7 @@ pic_folder_path = args.pic_folder_path
 class_dirs_to_use = args.class_dirs_to_use
 
 # output path to write the images to
-output_folder_path = args.output_folder_path or pic_folder_path
+output_folder_path = args.output_folder_path
 
 # set some ratios:
 train_ratio = args.train_ratio
@@ -69,7 +69,6 @@ def set_seed(seed=1129142083):
 def block_print():
     sys.stdout = open(os.devnull, 'w')
 
-
 # Restore print
 def enable_print():
     sys.stdout = sys.__stdout__
@@ -77,15 +76,15 @@ def enable_print():
 
 def copy_files_to_subdir(filenames: List[str], subdir: str) -> None:
     for filename in filenames:
-        shutil.copy(filename, output_folder_path + '/' + subdir + cls)
+        shutil.copy(filename, output_folder_path + '/' + subdir + '/' + cls)
 
 
 for cls in tqdm(class_dirs_to_use, desc = "Copy train/test/val sets"):
     #block_print()
     for sub_dir in ['train', 'test', 'val']:
-        os.makedirs(output_folder_path + '/' + sub_dir + cls, exist_ok=True)
+        os.makedirs(output_folder_path + '/' + sub_dir + '/' + cls, exist_ok=True)
     # Creating partitions of the data after shuffeling
-    src = pic_folder_path + cls  # Folder to copy images from
+    src = pic_folder_path + '/' + cls  # Folder to copy images from
 
     allFileNames = glob.glob(src+"/*.tiff")
     
@@ -103,5 +102,5 @@ for cls in tqdm(class_dirs_to_use, desc = "Copy train/test/val sets"):
     copy_files_to_subdir(val_FileNames.tolist(), "val")
 
 #enable_print()
-        
+
 print("Done splitting data into train/test/val sets!")
