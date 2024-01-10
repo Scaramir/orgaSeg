@@ -48,6 +48,13 @@ class_dirs_to_use = args.class_dirs_to_use
 # output path to write the images to
 output_folder_path = args.output_folder_path
 
+if not os.path.exists(output_folder_path):
+    os.makedirs(output_folder_path)
+
+if not os.path.exists(pic_folder_path):
+    raise FileNotFoundError(
+        f"Path to raw images does not exist: {pic_folder_path}")
+
 # set some ratios:
 train_ratio = args.train_ratio
 test_ratio = args.test_ratio
