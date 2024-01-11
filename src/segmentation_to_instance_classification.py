@@ -80,9 +80,9 @@ def do_it_for_all_images(raw_img_path: Path, pred_mask_path: Path, output_path: 
         pred_mask_path (Path): path to the folder containing the predicted masks.
         output_path (Path): path to the output folder.
     """
-    for _, img_name in enumerate(tqdm(list(Path.glob(raw_img_path, '*.tiff')), desc="Extracting instances from masks")):
+    for i, img_name in enumerate(tqdm(list(Path.glob(raw_img_path, '*.tiff')), desc="Extracting instances from masks")):
         img = tifffile.imread(img_name)
-        mask = tifffile.imread(str(img_name).replace('.tiff', '.png'))
+        mask = tifffile.imread(str(img_name).replace(".tiff", "_mask.tiff"))
         instances = extract_instances_from_mask(mask)
         for i, instance in enumerate(instances):
             cropped_img = crop_ori_image_to_instance(instance, img)
