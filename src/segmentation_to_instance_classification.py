@@ -6,6 +6,7 @@ from tqdm import tqdm
 from typing import List
 from pathlib import Path
 from argparse import ArgumentParser
+from numpy import unique
 
 # ------------------- #
 # SETUP CONFIGURATION #
@@ -16,9 +17,10 @@ parser = ArgumentParser(
     description='Convert segmentation to instance classification. Train a model to segment instances beforehand.'
 )
 parser.add_argument("--raw_img_path", help="Path to raw images.", 
-                    default="./../data/data_sets/stardist/val", required=False)
+                    default="./../data/data_sets/stardist/val/images", required=False)
 parser.add_argument("--pred_mask_path", help="Path to predicted masks.",
-                    default="./../data/data_sets/stardist_out/predicted_masks", required=False)
+                    # default="./../data/data_sets/stardist_out/predicted_masks", required=False)
+                    default="./../data/data_sets/stardist/val/masks", required=False)
 parser.add_argument("--out", help="Path to output folder.",
                     default="./../data/data_sets/classification/segmented_instances", required=False)
 args, _ = parser.parse_known_args()  # Ignore unexpected arguments
@@ -51,7 +53,7 @@ def extract_instances_from_mask(mask: np.ndarray) -> List[np.ndarray]:
         List[np.ndarray]: list with cooridnates of the instances' bounding box.
     """
     instance_boxes = []
-    for i in mask.unique():
+    for i in unique(mask):
         if i == 0:
             continue
         instance = np.argwhere(mask == i)
@@ -80,9 +82,11 @@ def do_it_for_all_images(raw_img_path: Path, pred_mask_path: Path, output_path: 
         pred_mask_path (Path): path to the folder containing the predicted masks.
         output_path (Path): path to the output folder.
     """
+    mask_names = list(Path.glob(pred_mask_path, '*.tiff'))
+
     for i, img_name in enumerate(tqdm(list(Path.glob(raw_img_path, '*.tiff')), desc="Extracting instances from masks")):
         img = tifffile.imread(img_name)
-        mask = tifffile.imread(str(img_name).replace(".tiff", "_mask.tiff"))
+        mask = tifffile.imread(mask_names[i])
         instances = extract_instances_from_mask(mask)
         for i, instance in enumerate(instances):
             cropped_img = crop_ori_image_to_instance(instance, img)
