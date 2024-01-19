@@ -1,7 +1,5 @@
-import sys, os
 import tifffile
 import numpy as np
-import pandas as pd
 from tqdm import tqdm
 from typing import List
 from pathlib import Path
@@ -57,8 +55,8 @@ def extract_instances_from_mask(mask: np.ndarray) -> List[np.ndarray]:
         if i == 0:
             continue
         instance = np.argwhere(mask == i)
-        (ystart, xstart), (ystop, xstop) = instance.min(0), instance.max(0) + 1
-        instance_boxes.append(mask[ystart:ystop, xstart:xstop])
+        top_left, bottom_right = instance.min(0), instance.max(0) + 1
+        instance_boxes.append([top_left, bottom_right])
     return instance_boxes
 
 def crop_ori_image_to_instance(instance: np.ndarray, ori_image: np.ndarray) -> np.ndarray:
@@ -71,8 +69,7 @@ def crop_ori_image_to_instance(instance: np.ndarray, ori_image: np.ndarray) -> n
     Returns:
         np.ndarray: cropped original image.
     """
-    (ystart, xstart), (ystop, xstop) = np.argwhere(instance > 0).min(0), np.argwhere(instance > 0).max(0) + 1
-    return ori_image[ystart:ystop, xstart:xstop]
+    return ori_image[instance[0][0]:instance[1][0], instance[0][1]:instance[1][1]]
 
 def do_it_for_all_images(raw_img_path: Path, pred_mask_path: Path, output_path: Path) -> None:
     """Extracts all instances from all masks and crops the original image to the instance's bounding box.
