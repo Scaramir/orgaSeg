@@ -89,7 +89,8 @@ def plot_accuracy(train_accus, test_accus, output_model_name, output_model_path)
 
 # -------------------------------Training ResNet and ResNeXt-------------------------------
 # FIXME: save state dict not model
-# TODO: Switch to tensorboard for logging and visualization
+# TODO: Switch to TensorBoard for logging and visualization 
+#       - make sure to train each combination of Hyperparameters if they are given as Lists. Add the grid search to tensorboard log.
 # TODO: include stopping criterion (patience stopping (5 epochs without improvement))
 # TODO: include mixed precision training (automatic mixed precision)
 # TODO: switch to torchmetrics.Accuracy() for accuracy calculation
