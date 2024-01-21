@@ -88,6 +88,13 @@ def plot_accuracy(train_accus, test_accus, output_model_name, output_model_path)
 # ---------------------------------------------------------------------
 
 # -------------------------------Training ResNet and ResNeXt-------------------------------
+# FIXME: save state dict not model
+# TODO: Switch to tensorboard for logging and visualization
+# TODO: include stopping criterion (patience stopping (5 epochs without improvement))
+# TODO: include mixed precision training (automatic mixed precision)
+# TODO: switch to torchmetrics.Accuracy() for accuracy calculation
+# Advanced: use distributed training for better cluster usage (torch.nn.parallel.DistributedDataParallel)
+# Advanced: DeepSpeed and Fabric?
 def train_nn(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler, output_model_path, output_model_name, num_epochs=25):
     import time
     import copy

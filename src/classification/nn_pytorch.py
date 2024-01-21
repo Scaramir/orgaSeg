@@ -82,9 +82,10 @@ data_dir = pic_folder_path
 # data_dir = 'C:/Users/.../Project 2/data'
 
 if use_normalize: 
-    friendly, condoms = get_mean_and_std(data_dir)
+    mean, std = get_mean_and_std(data_dir)
 
 # Data augmentation and normalization for training
+# TODO: add elastic deformation
 data_transforms = {
     "train": transforms.Compose([
         transforms.Resize((224, 224)),
@@ -99,8 +100,8 @@ data_transforms = {
     ]),
 }
 if use_normalize:
-    data_transforms["train"].transforms.append(transforms.Normalize(mean=friendly, std=condoms, inplace=True))
-    data_transforms["test"].transforms.append(transforms.Normalize(mean=friendly, std=condoms, inplace=True))
+    data_transforms["train"].transforms.append(transforms.Normalize(mean=mean, std=std, inplace=True))
+    data_transforms["test"].transforms.append(transforms.Normalize(mean=mean, std=std, inplace=True))
 
 
 # ---------------Data Loader------------------
@@ -158,7 +159,7 @@ def get_model(model_type, load_trained_model, reset_classifier_with_custom_layer
             return None
 
     if reset_classifier_with_custom_layers:
-        # TODO: change access to in_features to replace classifier
+        # TODO: change access to in_features to replace classifier in case a model requires it
         model.fc = nn.Sequential(nn.Linear(model.fc.in_features, 256),
                                     nn.Dropout(p=0.4, inplace=True),
                                     nn.Linear(256, 100),
@@ -184,7 +185,8 @@ if train_network:
     train_nn(model, dataloaders, dataset_sizes, criterion, optimizer, exp_lr_scheduler, output_model_path, output_model_name, num_epochs=num_epochs)
 
 
-# TODO: Evaluation of 3 different networks. Use Sigmoid and max to get the probabilities for each of the binary classes.
+# TODO: Evaluation of 3 different networks. Use softmax to get the probabilities for each of the binary classes.
+# TODO: Use F1 score to compare the networks instead of accuracy in case of unbalanced data.
 def evaluate_model(model, dataset_sizes, criterion, class_names, image_datasets, device="cuda", dataset = "test"):
     # for every image of our test set, we will prdict the class and the probability
     # save the probabilities and the classes in a list

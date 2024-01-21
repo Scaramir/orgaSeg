@@ -15,8 +15,8 @@ def install_album_catalog():
 
 def stardist_train():
     os.system("conda activate album && album run 'stardist_train' \
-              --root 'S:\studium\beliks_exploiting_dl_seminar\ORGAnoids_Applied_DL_FU\data\data_sets\stardist' \
-              --out 'S:\studium\beliks_exploiting_dl_seminar\ORGAnoids_Applied_DL_FU\data\data_sets\stardist_out' \
+              --root 'ORGAnoids_Applied_DL_FU\data\data_sets\stardist' \
+              --out 'ORGAnoids_Applied_DL_FU\data\data_sets\stardist_out' \
               --epochs 20 \
               --steps_per_epoch 50 \
               --mode 2D \
@@ -26,12 +26,20 @@ def stardist_train():
 def stardist_predict():
     os.system("conda activate album && \
               album run stardist_predict \
-              --root 'S:\studium\beliks_exploiting_dl_seminar\ORGAnoids_Applied_DL_FU\data\data_sets\stardist' \
-              --out 'S:\studium\beliks_exploiting_dl_seminar\ORGAnoids_Applied_DL_FU\data\data_sets\stardist_out' \
-              --model 'S:\studium\beliks_exploiting_dl_seminar\ORGAnoids_Applied_DL_FU\data\data_sets\stardist_out\stardist_model' \
+              --root 'ORGAnoids_Applied_DL_FU\data\data_sets\stardist' \
+              --out 'ORGAnoids_Applied_DL_FU\data\data_sets\stardist_out' \
+              --model 'ORGAnoids_Applied_DL_FU\data\data_sets\stardist_out\stardist_model' \
               --axes 'YX' \
               --n_tiles 1 \
               --overlap 0.1 \
               --normalize_input 'percentile'")
     return
 
+# TODO: 
+# convert folder and file structure to nnUNet format
+# Write a function to run nnUNet plan and preprocess
+# Write a function to run nnUNet train
+# Write a function to run nnUNet predict
+
+# TODO: compare the results of stardist and nnUNet
+# TODO: Discuss the usage of Cellpose in our scenario (https://www.sciencedirect.com/science/article/pii/S2667290122000420)

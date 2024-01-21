@@ -60,8 +60,6 @@ train_ratio = args.train_ratio
 test_ratio = args.test_ratio
 val_ratio = args.val_ratio
 
-# TODO: convert ^ to sys.argv parameters, adjust some things, test it
-
 
 # Global parameters for the current session:
 # (reproducability)
