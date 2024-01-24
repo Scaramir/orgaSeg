@@ -1,6 +1,6 @@
 // Usage:
 // Load the script as user script in Qupath for a given project
-// Line 10: Enter corresponding Qupath Project Base Directory
+// Line 12: Enter corresponding Qupath Project Base Directory
 // Open Project in Qupath, select first Image and run the script by pressing: Run -> Run for Project
 
 import qupath.lib.images.ImageData
