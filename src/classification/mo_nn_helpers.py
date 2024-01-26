@@ -140,7 +140,6 @@ def train_nn(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler,
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
-                        scheduler.step()
                 # track stats
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(pred_labels == labels.data)
@@ -164,6 +163,8 @@ def train_nn(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler,
                 print(">> Model saved as: ", output_model_name)
                 print(">> Model saved in: ", output_model_path)
         print()
+        # update schedular (learning rate) after each epoch, instead of after each batch
+        scheduler.step()
 
     time_elapsed = time.time() - since
     print("Training complete in {:.0f}m {:.0f}s".format(

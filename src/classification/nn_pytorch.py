@@ -48,8 +48,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
-import copy
-import time, random
+import random
 
 from tqdm import tqdm
 from mo_nn_helpers import get_mean_and_std
@@ -88,11 +87,11 @@ if use_normalize:
 # TODO: add elastic deformation
 data_transforms = {
     "train": transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((224, 224), antialias='warn'),
         transforms.RandomRotation(degrees=(-20, 20)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
-        transforms.ToTensor()
+        transforms.ToTensor() # transforms.ToTensor() converts the image to a tensor with values between 0 and 1, should we move this to the beginning of the pipeline?
     ]),
     "test": transforms.Compose([
         transforms.Resize((224, 224)),
