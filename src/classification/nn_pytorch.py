@@ -2,18 +2,14 @@
 scaramir, 2022
 date: 2022-11-08
 This is just a prototype sketch and can be seen as a starting point for the implementation of a neural network with pytorch.
-TODO: Adjust it to your needs. 
-NOTE: This was meant for a binary classification task for university purpose only.
-NOTE: intertwined with `mo_nn_helpers.py`
+NOTE: WIP - not finished yet
 """
 
 #-----------Hyperparameters-----------
 use_normalize = True
-pic_folder_path = '/path/to/your/data'
 learning_rate = 0.0005
 batch_size = 32
 num_epochs = 15
-num_epochs = 5
 num_classes = 2
 load_trained_model = True
 pretrained = True  # transfer learning
@@ -22,35 +18,41 @@ train_network = False
 evaluate_network = True
 
 # all three are residual networks with a different architecture (-> images from google for visualization)
-#model_type = 'resnet18'
+model_type = 'resnet18'
 #model_type = 'resnext50_32x4d'
-model_type = 'wide_resnet50_2'
+# model_type = 'wide_resnet50_2'
 
-input_model_path = './../models'
-input_model_name = "model_resnet_18"
+pic_folder_path = '/path/to/your/data'
+
+input_model_path = None # './../models'
+input_model_name = None # "model_resnet_18"
 
 output_model_path = './../models/'
-output_model_name = 'model_wide_resnet_2'
-#output_model_name = 'model_resnext50_2'
-#output_model_name = 'model_resnet_18'
 #----------------------------------
 
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import lr_scheduler
+from torchmetrics import F1Score
 from torchvision import datasets, transforms
+from captum.attr import LRP
+from torch.utils.tensorboard import SummaryWriter
 import torchvision.models as models
-from sklearn.metrics import confusion_matrix, classification_report, plot_roc_curve
+from sklearn.metrics import confusion_matrix, classification_report
+from pathlib import Path
+from tqdm import tqdm 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os
+import os, sys
 import random
-
-from tqdm import tqdm
+import warnings
+import time
+import copy
 from mo_nn_helpers import get_mean_and_std
 from mo_nn_helpers import *
 
@@ -59,7 +61,7 @@ def get_device():
         device = 'cuda'
     else:
         device = 'cpu'
-        print('-----WARNING-----\nCUDA not available. Using CPU instead.')
+        warnings.warn('CUDA not available. Using CPU instead.', UserWarning)
     print('Device set to {}.'.format(device))
     return device
 device = get_device()
@@ -68,10 +70,10 @@ device = get_device()
 def set_seeds(device = 'cuda', seed = 1129142087):
     random.seed(seed)
     np.random.seed(seed+1)
-    torch.random.manual_seed(seed)
+    torch.random.manual_seed(seed+2)
     if device == 'cuda':
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
+        torch.cuda.manual_seed(seed+3)
+        torch.cuda.manual_seed_all(seed+4)
         torch.backends.cudnn.deterministic = True
     print('Seeds set to {}.'.format(seed))
     return
@@ -84,13 +86,13 @@ if use_normalize:
     mean, std = get_mean_and_std(data_dir)
 
 # Data augmentation and normalization for training
-# TODO: add elastic deformation
 data_transforms = {
     "train": transforms.Compose([
         transforms.Resize((224, 224), antialias='warn'),
-        transforms.RandomRotation(degrees=(-20, 20)),
+        transforms.RandomRotation(degrees=(-35, 35)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.4),
         transforms.ToTensor() # transforms.ToTensor() converts the image to a tensor with values between 0 and 1, should we move this to the beginning of the pipeline?
     ]),
     "test": transforms.Compose([
@@ -178,81 +180,185 @@ criterion = nn.CrossEntropyLoss()
 # SGD optimizer with momentum could lead faster to good results, but Adam is more stable
 optimizer = optim.Adamax(model.parameters(), lr=learning_rate)
 #optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+# exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+exp_lr_scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
-if train_network:
-    train_nn(model, dataloaders, dataset_sizes, criterion, optimizer, exp_lr_scheduler, output_model_path, output_model_name, num_epochs=num_epochs)
+def train_model(model, train_loader, test_loader, criterion, optimizer, scheduler, num_epochs, writer, save_model=True, output_model_path=output_model_path):
+    best_accuracy = 0.0
+    epoches_used = 0
+    patience = 5
+    epochs_without_improvement = 0
+    for epoch in range(num_epochs):
+        train_loss, train_accuracy, all_predictions, all_labels = train_loop(model, train_loader, criterion, optimizer)
+        scheduler.step()
+        val_loss, val_accuracy, all = validate_model(model, test_loader, criterion)
+        writer.add_scalar('Loss/Train', train_loss, global_step=epoch)
+        writer.add_scalar('Accuracy/Train', train_accuracy, global_step=epoch)
+        writer.add_scalar('Loss/Validation', val_loss, global_step=epoch)
+        writer.add_scalar('Accuracy/Validation', val_accuracy, global_step=epoch)
+        # Patience stopping
+        if train_accuracy > val_accuracy:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= patience:
+                break
+        else:
+            epochs_without_improvement = 0
+            if val_accuracy >= best_accuracy:
+                best_accuracy = val_accuracy
+                # save model
+                save_model(model, output_model_path, "model_{}_{}".format(model_type, epoch))
 
+        epoches_used += 1
+    return best_accuracy, epoches_used, all_predictions, all_labels
 
-# TODO: Evaluation of 3 different networks. Use softmax to get the probabilities for each of the binary classes.
-# TODO: Use F1 score to compare the networks instead of accuracy in case of unbalanced data.
-def evaluate_model(model, dataset_sizes, criterion, class_names, image_datasets, device="cuda", dataset = "test"):
-    # for every image of our test set, we will prdict the class and the probability
-    # save the probabilities and the classes in a list
-    # save the ground truth classes in a list
-    # calculate the loss and the accuracy
-    # plot the confusion matrix with the older heatmap function from project 1. 
-    # plot the ROC curve with the function from project 1
-    
-    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=1,
-                    shuffle=False, num_workers=0)
-                    for x in [dataset]}
+def train_loop(model, train_loader, criterion, optimizer):
+    # no cache clearing necessary since we're not using a GPU
+    model.train()
+    train_loss = 0.0
+    correct = 0
+    total = 0
+    # train loop
+    for inputs, labels in train_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels.long())
+        loss.backward()
+        optimizer.step()
+        train_loss += loss.item()
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+    # returns
+    train_loss /= len(train_loader)
+    train_accuracy = 100 * correct / total
+    return train_loss, train_accuracy
 
-    num_samples = 0
-    num_correct = 0
-    true_labels_list = []
-    pred_labels_list = []
-    pred_scores_list = []
-    file_names_list = []
+def validate_model(model, test_loader, criterion):
+    val_loss = 0.0
+    correct = 0
+    total = 0
     model.eval()
-    
-    if device == "cuda":
-        torch.cuda.empty_cache()
-    
     with torch.no_grad():
-        for i, (inputs, labels) in enumerate(tqdm(dataloaders[dataset], desc="Evaluating the model...")):
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
-            #scores = torch.sigmoid(outputs)
-            scores = torch.nn.Softmax(dim=1)(outputs)
+            loss = criterion(outputs, labels.long())
+            val_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+            # store results for later use (confusion matrix, classification report)
+            if 'all_predicted' in locals():
+                all_predicted = torch.cat((all_predicted, predicted), 0)
+                all_labels = torch.cat((all_labels, labels), 0)
+            else:
+                all_predicted = predicted
+                all_labels = labels
+            
+    # returns
+    val_loss /= len(test_loader)
+    val_accuracy = 100 * correct / total
+    return val_loss, val_accuracy, all_predicted, all_labels
 
-            pred_scores, pred_labels = torch.max(scores, 1)
+# Perform hyperparameter grid search and save results to TensorBoard
+# train only for 5 epochs to save time
+# TODO: pass hyperparams as dict or class object
+def hyperparameter_search(model_types, learning_rates, batch_sizes, train_dataset, test_dataset, num_epochs):
+    # tqdm magic to update bars    
+    total_combinations = len(learning_rates) * len(batch_sizes) * len(model_types)
+    pbar = tqdm(total=total_combinations, desc='Hyperparameter Search')
+    # This might take a while ... 
+    writer = SummaryWriter()
+    best_model_settings = {"global_best_accuracy": 0.0}
+    for model_type in model_types: 
+        for learning_rate in learning_rates:
+            for batch_size in batch_sizes:
+                set_seeds(123420)
+                torch.cuda.empty_cache()
+                # Define the data loaders
+                train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+                test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
-            num_correct += torch.sum(pred_labels == labels.data)
-            num_samples += pred_labels.size(0)
-            true_labels_list.append(class_names[labels.cpu().detach().numpy()[0]])
-            pred_labels_list.append(class_names[pred_labels.cpu().detach().numpy()[0]])
-            pred_scores_list.append(pred_scores.cpu().detach().numpy()[0])
-            file_names_list.append(image_datasets[dataset].imgs[i][0].split("/")[-1])
+                # Create an instance of the model for each parameter combination
+                model = get_model(model_type=model_type, load_trained_model=load_trained_model, reset_classifier_with_custom_layers=reset_classifier_with_custom_layers, num_classes=num_classes, pretrained=pretrained, device=device, input_model_path=input_model_path, input_model_name=input_model_name)
 
-    accuracy = 100 * float(num_correct) / num_samples
-    #loss = criterion(outputs, labels)
-    print("Accuracy: {:.2f} %".format(accuracy))
-    #print("Loss: {:.2f}".format(loss))
+                # Define the loss function and optimizer
+                criterion = nn.CrossEntropyLoss()
+                # TODO: load and reset optimizer
+                # TODO: reset passed scheduler
+                scheduler = scheduler
 
-    print(classification_report(true_labels_list, pred_labels_list))
-    conf_mat = confusion_matrix(true_labels_list, pred_labels_list)
-    print(conf_mat)
+                # Train the model
+                best_accuracy, epoches_used, _, _ = train_model(model, train_loader, test_loader, criterion, optimizer, scheduler, num_epochs, writer, save_model=False)
 
-    # plot the confusion matrix
-    plt.clf()
-    sns.heatmap(conf_mat, annot=True, fmt='d', xticklabels=class_names, yticklabels=class_names)
-    plt.title("Confusion matrix - " + input_model_name)
+                # Save parameter combination and best accuracy to TensorBoard
+                writer.add_hparams({'model_type': model_type,
+                                    'learning_rate': learning_rate,
+                                    'batch_size': batch_size,
+                                    'epoches_used': epoches_used},
+                                    {'Best Accuracy': best_accuracy})
+
+                if best_accuracy >= best_model_settings["global_best_accuracy"]:
+                    # save settings for best model
+                    best_model_settings = {
+                        'global_best_accuracy': best_accuracy,
+                        'model_type': model_type,
+                        'learning_rate': learning_rate,
+                        'batch_size': batch_size,
+                        'epoches_used': epoches_used
+                    }
+
+                # tqdm magic to update bars
+                pbar.update(1)
+    writer.close()
+    return best_model_settings
+
+def train_best_model(best_model_settings, train_dataset, test_dataset, num_epochs):
+    # Define the data loaders
+    train_loader = DataLoader(train_dataset, batch_size=best_model_settings['batch_size'], shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=best_model_settings['batch_size'])
+
+    # Create an instance of the model for each parameter combination
+    model = get_model(model_type=best_model_settings['model_type'], load_trained_model=load_trained_model, reset_classifier_with_custom_layers=reset_classifier_with_custom_layers, num_classes=num_classes, pretrained=pretrained, device=device, input_model_path=input_model_path, input_model_name=input_model_name)
+
+    # Exponential learning rate scheduler
+    scheduler = scheduler
+
+    # Train the model
+    writer = SummaryWriter()
+    best_accuracy, epoches_used, all_predictions, all_labels = train_model(model, train_loader, test_loader, criterion, optimizer, scheduler, num_epochs, writer)
+    f1_score = F1Score(all_labels, all_predictions, average='macro')
+    writer.add_hparams(best_model_settings, {'F1-Score': f1_score})
+    writer.close()
+
+    # confusion matrix
+    cm = confusion_matrix(all_labels, all_predictions)
+    df_cm = pd.DataFrame(cm, index=class_names, columns=class_names)
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(df_cm, annot=True, cmap='Blues', fmt='g')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
     plt.show()
+    # classification report
+    print(classification_report(all_labels, all_predictions, target_names=class_names))
+    return
 
 
-    df = pd.DataFrame({
-        "file_name": file_names_list,
-        "true_label": true_labels_list,
-        "pred_label": pred_labels_list,
-        "pred_score": pred_scores_list})
-    print("Done.")
-    return df
-
-if evaluate_network:
-    df = evaluate_model(model, dataset_sizes, criterion, class_names, image_datasets, device="cuda", dataset = "test")
-
-# TODO: Plot the results. (Also with a confusion matrix as heatmap?)
-
-# TODO: report? 
+def predict_folder(trained_model, image_loader):
+    # this works similar to validate_model, but it returns the predictions instead of the accuracy, since we don't have labels
+    trained_model.eval()
+    with torch.no_grad():
+        for inputs, _ in image_loader:
+            inputs = inputs.to(device)
+            outputs = trained_model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            # store results for later use (confusion matrix, classification report)
+            if 'all_predicted' in locals():
+                all_predicted = torch.cat((all_predicted, predicted), 0)
+            else:
+                all_predicted = predicted
+    # save prediction and image name to csv
+    df = pd.DataFrame({'image_name': image_loader.dataset.samples, 'label': all_predicted})
+    df.to_csv('predictions.csv', index=False)
+    return
