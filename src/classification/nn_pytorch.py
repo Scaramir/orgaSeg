@@ -5,32 +5,7 @@ This is just a prototype sketch and can be seen as a starting point for the impl
 NOTE: WIP - not finished yet
 """
 
-#-----------Hyperparameters-----------
-use_normalize = True
-learning_rate = 0.0005
-batch_size = 32
-num_epochs = 15
-num_classes = 2
-load_trained_model = True
-pretrained = True  # transfer learning
-reset_classifier_with_custom_layers = False
-train_network = False
-evaluate_network = True
-
-# all three are residual networks with a different architecture (-> images from google for visualization)
-model_type = 'resnet18'
-#model_type = 'resnext50_32x4d'
-# model_type = 'wide_resnet50_2'
-
-pic_folder_path = '/path/to/your/data'
-
-input_model_path = None # './../models'
-input_model_name = None # "model_resnet_18"
-
-output_model_path = './../models/'
-#----------------------------------
-
-
+import sklearn.metrics
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -53,8 +28,35 @@ import random
 import warnings
 import time
 import copy
-from mo_nn_helpers import get_mean_and_std
 from mo_nn_helpers import *
+import argparse
+from pathlib import Path
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Neural Network Training')
+    parser.add_argument('--use_normalize', type=bool, default=True, help='Whether to use normalization')
+    parser.add_argument('--learning_rate', type=float, default=0.005, nargs='+', help='Learning rate(s) for training')
+    parser.add_argument('--batch_size', type=int, default=32, nargs='+', help='Batch size(s) for training')
+    parser.add_argument('--num_epochs', type=int, default=15, help='Number of epochs for training')
+    parser.add_argument('--num_classes', type=int, default=3, help='Number of classes')
+    parser.add_argument('--load_trained_model', type=bool, default=False, help='Whether to load a trained model')
+    parser.add_argument('--reset_classifier_with_custom_layers', type=bool, default=True, help='Whether to reset the classifier with custom layers')
+    parser.add_argument('--train_network', type=bool, default=True, help='Whether to train the network')
+    parser.add_argument('--infere_folder', type=bool, default=True, help='Whether to evaluate the network')
+    parser.add_argument('--model_type', type=str, default='resnet18', nargs='+', help='Type(s) of the model(s) to use for training')
+    parser.add_argument('--pretrained', type=bool, default=True, help='Whether to use pretrained weights')
+    parser.add_argument('--pic_folder_path', type=Path, default=Path('./../../data/data_sets/classification/'), help='Path to the picture folder')
+    parser.add_argument('--input_model_path', type=Path, default=None, help='Path to the input model')
+    parser.add_argument('--input_model_name', type=str, default=None, help='Name of the input model')
+    parser.add_argument('--output_model_path', type=Path, default=Path('./../../models/'), help='Path to the output model')
+    parser.add_argument('--hparam_seach', type=bool, default=False, help='Whether to perform hyperparameter search')
+    
+    # Get only known arguments
+    known_args, _ = parser.parse_known_args()
+    
+    return known_args
+
 
 def get_device():
     if torch.cuda.is_available():
@@ -64,10 +66,9 @@ def get_device():
         warnings.warn('CUDA not available. Using CPU instead.', UserWarning)
     print('Device set to {}.'.format(device))
     return device
-device = get_device()
 
 # set seeds for reproducibility
-def set_seeds(device = 'cuda', seed = 1129142087):
+def set_seeds(device = 'cuda', seed = 12342069):
     random.seed(seed)
     np.random.seed(seed+1)
     torch.random.manual_seed(seed+2)
@@ -77,48 +78,45 @@ def set_seeds(device = 'cuda', seed = 1129142087):
         torch.backends.cudnn.deterministic = True
     print('Seeds set to {}.'.format(seed))
     return
-set_seeds(device)
-
-data_dir = pic_folder_path
-# data_dir = 'C:/Users/.../Project 2/data'
-
-if use_normalize: 
-    mean, std = get_mean_and_std(data_dir)
-
-# Data augmentation and normalization for training
-data_transforms = {
-    "train": transforms.Compose([
-        transforms.Resize((224, 224), antialias='warn'),
-        transforms.RandomRotation(degrees=(-35, 35)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
-        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.4),
-        transforms.ToTensor() # transforms.ToTensor() converts the image to a tensor with values between 0 and 1, should we move this to the beginning of the pipeline?
-    ]),
-    "test": transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor()
-    ]),
-}
-if use_normalize:
-    data_transforms["train"].transforms.append(transforms.Normalize(mean=mean, std=std, inplace=True))
-    data_transforms["test"].transforms.append(transforms.Normalize(mean=mean, std=std, inplace=True))
-
 
 # ---------------Data Loader------------------
-image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x])
-                    for x in ["train", "test"]}
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size,
-                    shuffle=True, num_workers=0)
-                    for x in ["train", "test"]}
+def load_and_augment_images(pic_folder_path, batch_size, use_normalize=True):
+    if use_normalize: 
+        mean, std = get_mean_and_std(str(pic_folder_path))
 
-dataset_sizes = {x: len(image_datasets[x]) for x in ["train", "test"]}
-class_names = image_datasets["test"].classes
-num_classes = len(class_names)
+    # Data augmentation and normalization for training
+    data_transforms = {
+        "train": transforms.Compose([
+            transforms.Resize((224, 224), antialias='warn'),
+            transforms.RandomRotation(degrees=(-35, 35)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.4),
+            transforms.ToTensor() # transforms.ToTensor() converts the image to a tensor with values between 0 and 1, should we move this to the beginning of the pipeline?
+        ]),
+        "test": transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor()
+        ]),
+    }
+    if use_normalize:
+        data_transforms["train"].transforms.append(transforms.Normalize(mean=mean, std=std, inplace=True))
+        data_transforms["test"].transforms.append(transforms.Normalize(mean=mean, std=std, inplace=True))
+
+    image_datasets = {x: datasets.ImageFolder(str(pic_folder_path / x), data_transforms[x])
+                        for x in ["train", "test"]}
+    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size,
+                        shuffle=True, num_workers=0)
+                        for x in ["train", "test"]}
+
+    class_names = image_datasets["test"].classes
+    num_classes = len(class_names)
+
+    return dataloaders, class_names, num_classes
 # --------------------------------------------
 
 
-def get_model(model_type, load_trained_model, reset_classifier_with_custom_layers, num_classes=num_classes, pretrained=True, device='cuda', input_model_path=None, input_model_name=None):
+def get_model(model_type, load_trained_model, reset_classifier_with_custom_layers, num_classes=6, pretrained=True, device='cuda', input_model_path=None, input_model_name=None):
     print('Loading model...')
     if (load_trained_model) & (input_model_path is not None) & (input_model_name is not None):
         model = load_model(input_model_path, input_model_name).to(device)
@@ -174,24 +172,17 @@ def get_model(model_type, load_trained_model, reset_classifier_with_custom_layer
     model = model.to(device)
     print("Done.")
     return model
-model = get_model(model_type=model_type, load_trained_model=load_trained_model, reset_classifier_with_custom_layers=reset_classifier_with_custom_layers, num_classes=num_classes, pretrained=pretrained, device=device, input_model_path=input_model_path, input_model_name=input_model_name)
 
-criterion = nn.CrossEntropyLoss()
-# SGD optimizer with momentum could lead faster to good results, but Adam is more stable
-optimizer = optim.Adamax(model.parameters(), lr=learning_rate)
-#optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-# exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-exp_lr_scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
-def train_model(model, train_loader, test_loader, criterion, optimizer, scheduler, num_epochs, writer, save_model=True, output_model_path=output_model_path):
+def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, save_model_to_disk=True, output_model_path="./../../models/", model_type="resnet18", device='cuda'):
     best_accuracy = 0.0
     epoches_used = 0
     patience = 5
     epochs_without_improvement = 0
-    for epoch in range(num_epochs):
-        train_loss, train_accuracy, all_predictions, all_labels = train_loop(model, train_loader, criterion, optimizer)
+    for epoch in tqdm(range(num_epochs), desc='Training', unit='epoch', leave=False):
+        train_loss, train_accuracy, _, _ = train_loop(model, dataloaders, criterion, optimizer, device=device)
         scheduler.step()
-        val_loss, val_accuracy, all = validate_model(model, test_loader, criterion)
+        val_loss, val_accuracy, all_predictions, all_labels = validate_model(model, dataloaders, criterion, device=device)
         writer.add_scalar('Loss/Train', train_loss, global_step=epoch)
         writer.add_scalar('Accuracy/Train', train_accuracy, global_step=epoch)
         writer.add_scalar('Loss/Validation', val_loss, global_step=epoch)
@@ -206,19 +197,20 @@ def train_model(model, train_loader, test_loader, criterion, optimizer, schedule
             if val_accuracy >= best_accuracy:
                 best_accuracy = val_accuracy
                 # save model
-                save_model(model, output_model_path, "model_{}_{}".format(model_type, epoch))
+                if save_model_to_disk:
+                    save_model(model, output_model_path, "model_{}".format(model_type))
 
         epoches_used += 1
     return best_accuracy, epoches_used, all_predictions, all_labels
 
-def train_loop(model, train_loader, criterion, optimizer):
+def train_loop(model, dataloaders, criterion, optimizer, device='cuda'):
     # no cache clearing necessary since we're not using a GPU
     model.train()
     train_loss = 0.0
     correct = 0
     total = 0
     # train loop
-    for inputs, labels in train_loader:
+    for inputs, labels in tqdm(dataloaders["train"], desc='Training', unit='batch', leave=False):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -230,17 +222,17 @@ def train_loop(model, train_loader, criterion, optimizer):
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
     # returns
-    train_loss /= len(train_loader)
+    train_loss /= len(dataloaders["train"])
     train_accuracy = 100 * correct / total
-    return train_loss, train_accuracy
+    return train_loss, train_accuracy, predicted, labels
 
-def validate_model(model, test_loader, criterion):
+def validate_model(model, dataloaders, criterion, device='cuda'):
     val_loss = 0.0
     correct = 0
     total = 0
     model.eval()
     with torch.no_grad():
-        for inputs, labels in test_loader:
+        for inputs, labels in tqdm(dataloaders["test"], desc='Validation', unit='batch', leave=False):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             loss = criterion(outputs, labels.long())
@@ -257,14 +249,14 @@ def validate_model(model, test_loader, criterion):
                 all_labels = labels
             
     # returns
-    val_loss /= len(test_loader)
+    val_loss /= len(dataloaders["test"])
     val_accuracy = 100 * correct / total
     return val_loss, val_accuracy, all_predicted, all_labels
 
 # Perform hyperparameter grid search and save results to TensorBoard
 # train only for 5 epochs to save time
 # TODO: pass hyperparams as dict or class object
-def hyperparameter_search(model_types, learning_rates, batch_sizes, train_dataset, test_dataset, num_epochs):
+def hyperparameter_search(model_types, learning_rates, batch_sizes, dataloaders, num_epochs):
     # tqdm magic to update bars    
     total_combinations = len(learning_rates) * len(batch_sizes) * len(model_types)
     pbar = tqdm(total=total_combinations, desc='Hyperparameter Search')
@@ -277,20 +269,18 @@ def hyperparameter_search(model_types, learning_rates, batch_sizes, train_datase
                 set_seeds(123420)
                 torch.cuda.empty_cache()
                 # Define the data loaders
-                train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-                test_loader = DataLoader(test_dataset, batch_size=batch_size)
+                dataloaders = load_and_augment_images(pic_folder_path, batch_size, use_normalize)
 
                 # Create an instance of the model for each parameter combination
                 model = get_model(model_type=model_type, load_trained_model=load_trained_model, reset_classifier_with_custom_layers=reset_classifier_with_custom_layers, num_classes=num_classes, pretrained=pretrained, device=device, input_model_path=input_model_path, input_model_name=input_model_name)
 
-                # Define the loss function and optimizer
+                # NOTE: technically hyperparameter, but we're sticking to those for now
                 criterion = nn.CrossEntropyLoss()
-                # TODO: load and reset optimizer
-                # TODO: reset passed scheduler
-                scheduler = scheduler
+                optimizer = optim.Adamax(model.parameters(), lr=learning_rate)
+                scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
                 # Train the model
-                best_accuracy, epoches_used, _, _ = train_model(model, train_loader, test_loader, criterion, optimizer, scheduler, num_epochs, writer, save_model=False)
+                best_accuracy, epoches_used, _, _ = train_model(model, dataloaders["train"], dataloaders["test"], criterion, optimizer, scheduler, num_epochs, writer, save_model=False)
 
                 # Save parameter combination and best accuracy to TensorBoard
                 writer.add_hparams({'model_type': model_type,
@@ -314,23 +304,26 @@ def hyperparameter_search(model_types, learning_rates, batch_sizes, train_datase
     writer.close()
     return best_model_settings
 
-def train_best_model(best_model_settings, train_dataset, test_dataset, num_epochs):
-    # Define the data loaders
-    train_loader = DataLoader(train_dataset, batch_size=best_model_settings['batch_size'], shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=best_model_settings['batch_size'])
-
+def train_best_model(best_model_settings, dataloaders, num_epochs):
     # Create an instance of the model for each parameter combination
     model = get_model(model_type=best_model_settings['model_type'], load_trained_model=load_trained_model, reset_classifier_with_custom_layers=reset_classifier_with_custom_layers, num_classes=num_classes, pretrained=pretrained, device=device, input_model_path=input_model_path, input_model_name=input_model_name)
 
-    # Exponential learning rate scheduler
-    scheduler = scheduler
-
+    # NOTE: technically hyperparameter, but we're sticking to those for now
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adamax(model.parameters(), lr=best_model_settings['learning_rate'])
+    scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+    
     # Train the model
     writer = SummaryWriter()
-    best_accuracy, epoches_used, all_predictions, all_labels = train_model(model, train_loader, test_loader, criterion, optimizer, scheduler, num_epochs, writer)
-    f1_score = F1Score(all_labels, all_predictions, average='macro')
-    writer.add_hparams(best_model_settings, {'F1-Score': f1_score})
+    best_accuracy, epoches_used, all_predictions, all_labels = train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer)
+    all_predictions = all_predictions.cpu().detach().numpy()
+    all_labels = all_labels.cpu().detach().numpy()
+    # Save parameter combination and best accuracy to TensorBoard
+    f1_score_test = sklearn.metrics.f1_score(all_labels, all_predictions, average='weighted')
+    writer.add_hparams(best_model_settings, {'F1-Score test': f1_score_test})
     writer.close()
+    print('Best accuracy: {:.2f}%'.format(best_accuracy))
+    print('Epoches used: {}'.format(epoches_used))
 
     # confusion matrix
     cm = confusion_matrix(all_labels, all_predictions)
@@ -345,7 +338,7 @@ def train_best_model(best_model_settings, train_dataset, test_dataset, num_epoch
     return
 
 
-def predict_folder(trained_model, image_loader):
+def predict_folder(trained_model, image_loader, class_names, device='cuda'):
     # this works similar to validate_model, but it returns the predictions instead of the accuracy, since we don't have labels
     trained_model.eval()
     with torch.no_grad():
@@ -358,7 +351,89 @@ def predict_folder(trained_model, image_loader):
                 all_predicted = torch.cat((all_predicted, predicted), 0)
             else:
                 all_predicted = predicted
+    # map predicted labels to class names
+    image_names = image_loader.dataset.samples
+    print(image_names)
+    image_names = [str(Path(image_name[0]).stem) for image_name in image_names]
     # save prediction and image name to csv
-    df = pd.DataFrame({'image_name': image_loader.dataset.samples, 'label': all_predicted})
-    df.to_csv('predictions.csv', index=False)
+    df = pd.DataFrame({'image_name': image_names, 'label': all_predicted.cpu().detach().numpy()})
+    df.to_csv('./../../data/results/predictions.csv', index=False)
     return
+
+
+# ---------------Main------------------
+if __name__ == '__main__':
+    
+    args = parse_args()
+    use_normalize = args.use_normalize
+    learning_rate = args.learning_rate
+    batch_size = args.batch_size
+    num_epochs = args.num_epochs
+    num_classes = args.num_classes
+    load_trained_model = args.load_trained_model
+    reset_classifier_with_custom_layers = args.reset_classifier_with_custom_layers
+    train_network = args.train_network
+    infere_folder = args.infere_folder
+    model_type = args.model_type
+    pretrained = args.pretrained
+    pic_folder_path = args.pic_folder_path
+    input_model_path = args.input_model_path
+    input_model_name = args.input_model_name
+    output_model_path = args.output_model_path
+    hparam_search = args.hparam_seach
+
+    device = get_device()
+    set_seeds(device)
+
+    # Load the data
+    dataloaders, class_names, num_classes = load_and_augment_images(pic_folder_path, batch_size, use_normalize)
+
+    # Hyperparameter search
+    if hparam_search:
+        best_model_settings = hyperparameter_search(
+            model_type=model_type,
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            train_loader=dataloaders["train"],
+            test_loader=dataloaders["test"],
+            num_epochs=num_epochs,
+            num_classes=num_classes,
+            pretrained=pretrained,
+            reset_classifier_with_custom_layers=reset_classifier_with_custom_layers,
+            load_trained_model=load_trained_model,
+            input_model_path=input_model_path,
+            input_model_name=input_model_name
+        )
+        print('Best model settings: {}'.format(best_model_settings))
+
+    # Train the model
+    if train_network and hparam_search:
+        set_seeds()
+        train_best_model(best_model_settings, dataloaders, num_epochs)
+    
+    if train_network and not hparam_search:
+        set_seeds()
+        model_settings = {
+            'model_type': model_type,
+            'learning_rate': learning_rate,
+            'batch_size': batch_size,
+            'epoches_used': num_epochs
+        }
+        train_best_model(model_settings, dataloaders, num_epochs)
+
+    best_model_settings = {
+        'model_type': model_type,
+        'learning_rate': learning_rate,
+        'batch_size': batch_size,
+        'epoches_used': num_epochs
+    }
+
+    # Evaluate the model
+    if infere_folder:
+        # Load the best model
+        trained_model = load_model(output_model_path, "model_{}".format(best_model_settings['model_type']))
+        # Predict the labels for the test set
+        predict_folder(trained_model, dataloaders["test"], class_names)
+    
+    print('Done.')
+# --------------------------------------------
