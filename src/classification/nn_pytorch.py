@@ -95,7 +95,7 @@ def load_and_augment_images(pic_folder_path, batch_size, use_normalize=True):
             transforms.ToTensor() # transforms.ToTensor() converts the image to a tensor with values between 0 and 1, should we move this to the beginning of the pipeline?
         ]),
         "test": transforms.Compose([
-            transforms.Resize((224, 224)),
+            transforms.Resize((224, 224), antialias='warn'),
             transforms.ToTensor()
         ]),
     }
@@ -351,12 +351,13 @@ def predict_folder(trained_model, image_loader, class_names, device='cuda'):
                 all_predicted = torch.cat((all_predicted, predicted), 0)
             else:
                 all_predicted = predicted
-    # map predicted labels to class names
     image_names = image_loader.dataset.samples
     print(image_names)
     image_names = [str(Path(image_name[0]).stem) for image_name in image_names]
+    all_predicted = all_predicted.cpu().detach().numpy()
+    all_predicted = [class_names[prediction] for prediction in all_predicted]
     # save prediction and image name to csv
-    df = pd.DataFrame({'image_name': image_names, 'label': all_predicted.cpu().detach().numpy()})
+    df = pd.DataFrame({'image_name': image_names, 'label': all_predicted})
     df.to_csv('./../../data/results/predictions.csv', index=False)
     return
 
