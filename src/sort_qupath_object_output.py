@@ -1,3 +1,8 @@
+"""
+sort files from qupath export into folders depending on class / annotation label.
+Afterwards you can use split.py and pass the 6 classes to it so create train&test split.
+"""
+
 from pathlib import Path
 import argparse
 from tqdm import tqdm
