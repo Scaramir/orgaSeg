@@ -71,3 +71,17 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
 
 - _convert_label.py_: converts the annotations from geojson to tiff format
 - _preprocess_dataset.py_: preprocesses the data set (raw images and tiff labels) to the preprocessed data set
+
+# Pipeline flow
+
+## Export data
+
+- Open project with annotations in QuPath
+
+## Preprocess data
+
+## Train segmentation
+
+## Train classifier
+
+
