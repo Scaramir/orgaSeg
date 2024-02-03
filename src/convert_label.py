@@ -52,9 +52,13 @@ def get_annotations(annotations_file: Path
 
 
 def get_size_of_annotation_file(annotation_file: str) -> Tuple[int, int]:
-    image_file = DATASET_PATH / (annotation_file[:-8] + '.tiff')
-    if not image_file.exists():
-        image_file = DATASET_PATH / (annotation_file[:-8] + '.jpg')
+    possible_img_paths = [DATASET_PATH / (annotation_file[:-8] + '.tiff'),
+                          DATASET_PATH / (annotation_file[:-8] + '.jpg')]
+    image_file = DATASET_PATH / (annotation_file[:-8])
+    for possible_img_path in possible_img_paths:
+        if possible_img_path.exists():
+            image_file = possible_img_path
+            break
     img = Image.open(image_file)
     return img.size
 
@@ -77,14 +81,16 @@ image_sizes = {
 for annotation_file_name in tqdm(annotation_file_names, desc="Creating maps"):
     img_annotations = annotations[annotation_file_name]
     img_size = image_sizes[annotation_file_name]
-    class_maps = {class_label: Image.new("L", img_size)
+    class_maps = {class_label.lower(): Image.new("L", img_size)
                   for class_label in CLASSES}
     segmentation_map = Image.new("L", img_size)
     segmentation_draw = ImageDraw.Draw(segmentation_map)
-    segmentation_step_size = 255 // sum(map(len, img_annotations.values()))
+    segmentation_step_size = 255 // max(sum(map(len, img_annotations.values())), 1)
     segmentation_fill = 255
     for class_label, class_annotations in img_annotations.items():
-        draw = ImageDraw.Draw(class_maps[class_label])
+        if class_label.lower() == "unsure":
+            continue
+        draw = ImageDraw.Draw(class_maps[class_label.lower()])
         step_size = 255 // len(class_annotations)
         for i, annotation_coordinates in enumerate(class_annotations):
             if len(annotation_coordinates) == 1:
