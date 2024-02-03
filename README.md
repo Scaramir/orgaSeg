@@ -77,8 +77,7 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
 ## Export data
 
 - Open project with annotations in QuPath
-- Use export_annotation_images_as_tif.groovy file with instructions on top to export cells
-- Export for all files the annotations as geojson
+- Use src/export_geojsons_and_rois.groovy file with instructions on top to export cells & geojsons
 
 ## Preprocess data
 
