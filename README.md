@@ -78,16 +78,27 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
 
 - Open project with annotations in QuPath
 - Use src/export_geojsons_and_rois.groovy file with instructions on top to export cells & geojsons
+- use sort_qupath_object_output.py to sort the exported data into the correct directory structure for training a classification model 
 
 ## Preprocess data
 
-- Use convert_label.py file to convert geojson files to tiffs
-- Use preprocess_dataset.py file to preprocess images and masks
-- Use split.py file to split segmentation data in train and test data, and create correct dataset structure
+- Use convert_label.py to convert geojson files to tiffs
+- Use preprocess_dataset.py to preprocess images and masks
+- Use split.py to split segmentation data in train and test data, and create correct dataset structure for segmentation models
+- Use split.py to split classification data in train and test data, and create correct dataset structure for classification models 
 
 
 ## Train segmentation
 
+- Use segmentation_album.py to train stardist model
+- TODO: Extend segmentation_album.py to train another segmentation model for comparison 
+
 ## Train classifier
 
+- Use nn_pytorch.py to train a classifier
 
+# Pipelining 
+- TODO: automate the following steps in a pipeline
+- Use your segmentation model to predict segmentation masks for a whole directory with new data (album solution: stardist_predict) 
+- Use segmentation_to_classification.py to extract the objects from the segmentation masks and store them in a new directory
+- Use your classifier to predict the class of the objects (nn_pytorch_predict.py) and obtain a csv file with the predictions for each object
