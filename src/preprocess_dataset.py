@@ -47,6 +47,8 @@ if not RAW_MASK_PATH.exists():
         f"Path to raw annotations does not exist: {RAW_MASK_PATH}")
 
 OUTPUT_PATH.mkdir(exist_ok=True, parents=True)
+Path(OUTPUT_PATH / "images").mkdir(exist_ok=True, parents=True)
+Path(OUTPUT_PATH / "labels").mkdir(exist_ok=True, parents=True)
 
 # Kernel setup to remove vignette from images:
 kernel_size = 5
@@ -126,7 +128,8 @@ for i, img_name in enumerate(tqdm(img_files, desc="Preprocessing images")):
     # More explicit error messages
     try:
         if img_name.stem not in mask_files[i].stem:
-            raise FileNotFoundError(f"Mask file not found for image {img_name.stem}. Probably no matching prefix due to wrong file namings.")
+            warnings.warn(f"Mask file not found for image {img_name.stem}. Probably no matching prefix due to wrong file namings.")
+            continue
     except IndexError as e:
         print(str(e), "More images than masks found", img_name, ".\nAborting preprocessing...")
         break

@@ -20,7 +20,7 @@ parser = ArgumentParser(
     description='Convert QuPath project annotations to tiff maps.'
 )
 parser.add_argument("-a", "--ANNOTATIONS_PATH", help="Path to exported annotations of QuPath.",
-                    default="../data/raw_data/annotations_json", required=False)
+                    default="../../annotation - organoid pictures/export/geojsons", required=False)
 parser.add_argument("-d", "--DATASET_PATH", help="Path to image dataset folder.",
                     default="../data/raw_data/raw_images", required=False)
 parser.add_argument("-o", "--out", help="Path to output folder for created masks.",
@@ -30,6 +30,7 @@ args, _ = parser.parse_known_args()  # Ignore unexpected arguments
 ANNOTATIONS_PATH = Path(args.ANNOTATIONS_PATH)  # Directory containing of QuPath project
 DATASET_PATH = Path(args.DATASET_PATH)  # Directory containing images
 OUTPUT_PATH = Path(args.out)
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 
 # Read annotations & images
