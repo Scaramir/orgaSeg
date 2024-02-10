@@ -18,12 +18,14 @@ def get_args():
 
 
 def get_file_names(root: Path):
-    file_names = [name for name in root.glob('*.tif')]
+    file_names = [name
+                  for name in root.glob('*.tif')
+                  if "(" in str(name)]
     return file_names
 
 # sort file names by whatever is written in '()'
 def sort_file_names(file_names):
-    # TODO: List index oput of range -> file names 
+    # TODO: List index out of range -> file names UPDATE: möglicher fix in get_file_names Funktion (exports ohne Klammer ignorieren)
     sorted_file_names = sorted(file_names, key=lambda x: x.name.split('(')[1].split(')')[0])
     return sorted_file_names
 

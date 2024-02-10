@@ -4,7 +4,7 @@
 // Import this script in "Script Editor"
 // Run the script by pressing: "Run..." -> "Run for Project"
 //   After pressing, select all images and confirm using "ok" button
-// Results are in exports/ directory in QuPath project root
+// Results are in export/ directory in QuPath project root
 //   There will be a ROIsTif/ and geojsons/ directory inside containing results
 
 import qupath.lib.images.ImageData

@@ -121,15 +121,17 @@ if len(img_files) != len(mask_files):
     warnings.warn("Number of image files does not match number of mask files !")
 
 # The hard work
-for i, img_name in enumerate(tqdm(img_files, desc="Preprocessing images")):
+i = 0
+for img_name in tqdm(img_files, desc="Preprocessing images"):
     # if *small* or other weird stuff in name, continue
     if ('small' in img_name.stem) or ('1_tiff_oaf.jpg' in img_name.stem):
+        i += 1
         continue
     # More explicit error messages
     try:
         if img_name.stem not in mask_files[i].stem:
             warnings.warn(f"Mask file not found for image {img_name.stem}. Probably no matching prefix due to wrong file namings.")
-            continue
+            continue  # don't increase i
     except IndexError as e:
         print(str(e), "More images than masks found", img_name, ".\nAborting preprocessing...")
         break
@@ -153,5 +155,6 @@ for i, img_name in enumerate(tqdm(img_files, desc="Preprocessing images")):
             mask_crop = mask_crop.resize((args.size, args.size))
         imwrite(OUTPUT_PATH / "images" / img_name.name.replace('.tiff', f'_{j}.tiff'), img_crop)
         imwrite(OUTPUT_PATH / "labels" / mask_files[i].name.replace('.tiff', f'_{j}.tiff'), mask_crop)
+    i += 1
 
 print("DONE!")
