@@ -90,6 +90,8 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
 
 ## Train segmentation
 
+- Add image-challaenges-catalog to your album installation.  
+- stardist want the subfolders for train/test to be namesd "images" and "masks", not "labels" -> why do we switched to "labels" in the first place? -> manually rename the folders or change the code that creates the folders
 - Use segmentation_album.py to train stardist model
 - TODO: Extend segmentation_album.py to train another segmentation model for comparison 
 
