@@ -25,13 +25,13 @@ parser.add_argument("--pic_folder_path", help="The root-folder containing the re
 parser.add_argument("--output_folder_path", help="The output path to write the images to",
                     default="./../data/data_sets/stardist", required=False)
 parser.add_argument("--class_dirs_to_use", help="Classes/subdirectories to include in the data sets",
-                    default=["images", "labels"], nargs='*', required=False)
+                    default=["images", "masks"], nargs='*', required=False)
 parser.add_argument("--train_ratio", help="Ratio of data to be used for training between 0 and 1",
                     default=0.8, required=False)  # .7
 parser.add_argument("--test_ratio", help="Ratio of data to be used for testing between 0 and 1",
-                    default=0.2, required=False)  # .3
+                    default=0.0, required=False)  # .3
 parser.add_argument("--val_ratio", help="Ratio of data to be used for validating between 0 and 1",
-                    default=0.0, required=False)  # stardist expects the test images to be in a folder called `val`, so set this to 0.2 instead
+                    default=0.2, required=False)  # stardist expects the test images to be in a folder called `val`, so set this to 0.2 instead
 args, _ = parser.parse_known_args()  # Ignore unexpected arguments
 
 

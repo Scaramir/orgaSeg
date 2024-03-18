@@ -48,7 +48,7 @@ if not RAW_MASK_PATH.exists():
 
 OUTPUT_PATH.mkdir(exist_ok=True, parents=True)
 Path(OUTPUT_PATH / "images").mkdir(exist_ok=True, parents=True)
-Path(OUTPUT_PATH / "labels").mkdir(exist_ok=True, parents=True)
+Path(OUTPUT_PATH / "masks").mkdir(exist_ok=True, parents=True)
 
 # Kernel setup to remove vignette from images:
 kernel_size = 5
@@ -130,6 +130,7 @@ for img_name in tqdm(img_files, desc="Preprocessing images"):
     # More explicit error messages
     try:
         if img_name.stem not in mask_files[i].stem:
+            # TODO: fix warning. 
             warnings.warn(f"Mask file not found for image {img_name.stem}. Probably no matching prefix due to wrong file namings.")
             continue  # don't increase i
     except IndexError as e:
@@ -154,7 +155,7 @@ for img_name in tqdm(img_files, desc="Preprocessing images"):
             img_crop = img_crop.resize((args.size, args.size))
             mask_crop = mask_crop.resize((args.size, args.size))
         imwrite(OUTPUT_PATH / "images" / img_name.name.replace('.tiff', f'_{j}.tiff'), img_crop)
-        imwrite(OUTPUT_PATH / "labels" / mask_files[i].name.replace('.tiff', f'_{j}.tiff'), mask_crop)
+        imwrite(OUTPUT_PATH / "masks" / mask_files[i].name.replace('.tiff', f'_{j}.tiff'), mask_crop)
     i += 1
 
 print("DONE!")
