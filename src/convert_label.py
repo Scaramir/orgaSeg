@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw
 
 
 # Constants
-CLASSES = {"Filled in", "Early branching", "Cyst", "Burned out", "Ring", "Branched"}
+CLASSES = {"Filled in", "Early branching", "Cyst", "Burned out", "Ring", "Branched", "Unsure"}
 
 # Parse arguments
 parser = ArgumentParser(
