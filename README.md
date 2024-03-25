@@ -103,4 +103,4 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
 - TODO: automate the following steps in a pipeline
 - Use your segmentation model to predict segmentation masks for a whole directory with new data (album solution: stardist_predict) 
 - Use segmentation_to_classification.py to extract the objects from the segmentation masks and store them in a new directory
-- Use your classifier to predict the class of the objects (nn_pytorch_predict.py) and obtain a csv file with the predictions for each object
+- Use your trained classifier to predict the class of the objects (nn_pytorch.py) and obtain a csv file with the predictions for each object
