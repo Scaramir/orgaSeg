@@ -36,21 +36,21 @@ from pathlib import Path
 def parse_args():
     parser = argparse.ArgumentParser(description='Neural Network Training')
     parser.add_argument('--use_normalize', type=bool, default=True, help='Whether to use normalization')
-    parser.add_argument('--learning_rate', type=float, default=0.005, nargs='+', help='Learning rate(s) for training')
-    parser.add_argument('--batch_size', type=int, default=32, nargs='+', help='Batch size(s) for training')
-    parser.add_argument('--num_epochs', type=int, default=15, help='Number of epochs for training')
-    parser.add_argument('--num_classes', type=int, default=3, help='Number of classes')
+    parser.add_argument('--learning_rate', type=float, default=[0.01, 0.005, 0.0005], nargs='+', help='Learning rate(s) for training')
+    parser.add_argument('--batch_size', type=int, default=[32, 16], nargs='+', help='Batch size(s) for training')
+    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs for training')
+    parser.add_argument('--num_classes', type=int, default=6, help='Number of classes')
     parser.add_argument('--load_trained_model', type=bool, default=False, help='Whether to load a trained model')
     parser.add_argument('--reset_classifier_with_custom_layers', type=bool, default=True, help='Whether to reset the classifier with custom layers')
     parser.add_argument('--train_network', type=bool, default=True, help='Whether to train the network')
     parser.add_argument('--infere_folder', type=bool, default=True, help='Whether to evaluate the network')
-    parser.add_argument('--model_type', type=str, default='resnet18', nargs='+', help='Type(s) of the model(s) to use for training')
+    parser.add_argument('--model_type', type=str, default=['resnet18', 'resnext50_32x4d'], nargs='+', help='Type(s) of the model(s) to use for training')
     parser.add_argument('--pretrained', type=bool, default=True, help='Whether to use pretrained weights')
     parser.add_argument('--pic_folder_path', type=Path, default=Path('./../../data/data_sets/classification/'), help='Path to the picture folder')
     parser.add_argument('--input_model_path', type=Path, default=None, help='Path to the input model')
     parser.add_argument('--input_model_name', type=str, default=None, help='Name of the input model')
     parser.add_argument('--output_model_path', type=Path, default=Path('./../../models/'), help='Path to the output model')
-    parser.add_argument('--hparam_seach', type=bool, default=False, help='Whether to perform hyperparameter search')
+    parser.add_argument('--hparam_seach', type=bool, default=True, help='Whether to perform hyperparameter search')
     
     # Get only known arguments
     known_args, _ = parser.parse_known_args()
@@ -256,7 +256,14 @@ def validate_model(model, dataloaders, criterion, device='cuda'):
 # Perform hyperparameter grid search and save results to TensorBoard
 # train only for 5 epochs to save time
 # TODO: pass hyperparams as dict or class object
-def hyperparameter_search(model_types, learning_rates, batch_sizes, dataloaders, num_epochs):
+def hyperparameter_search(model_types, learning_rates, batch_sizes, num_epochs, pic_folder_path, use_normalize=True, num_classes=6, pretrained=True, device='cuda', input_model_path=None, input_model_name=None, load_trained_model=False, reset_classifier_with_custom_layers=True):
+    print("Starting hyperparameter search...")
+    if num_epochs < 5:
+        print("Warning: Number of epochs is less than 5. This might not be enough to get meaningful results.")
+    if num_epochs > 20:
+        print("Warning: Number of epochs is greater than 20. It will be capped to 20 so find the best configuration faster. You can retrain the best model with more epochs later on if needed.")
+        num_epochs = 20
+
     # tqdm magic to update bars    
     total_combinations = len(learning_rates) * len(batch_sizes) * len(model_types)
     pbar = tqdm(total=total_combinations, desc='Hyperparameter Search')
@@ -268,8 +275,9 @@ def hyperparameter_search(model_types, learning_rates, batch_sizes, dataloaders,
             for batch_size in batch_sizes:
                 set_seeds(123420)
                 torch.cuda.empty_cache()
+
                 # Define the data loaders
-                dataloaders = load_and_augment_images(pic_folder_path, batch_size, use_normalize)
+                dataloaders, _, _ = load_and_augment_images(pic_folder_path, batch_size, use_normalize)
 
                 # Create an instance of the model for each parameter combination
                 model = get_model(model_type=model_type, load_trained_model=load_trained_model, reset_classifier_with_custom_layers=reset_classifier_with_custom_layers, num_classes=num_classes, pretrained=pretrained, device=device, input_model_path=input_model_path, input_model_name=input_model_name)
@@ -280,7 +288,7 @@ def hyperparameter_search(model_types, learning_rates, batch_sizes, dataloaders,
                 scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
                 # Train the model
-                best_accuracy, epoches_used, _, _ = train_model(model, dataloaders["train"], dataloaders["test"], criterion, optimizer, scheduler, num_epochs, writer, save_model=False)
+                best_accuracy, epoches_used, _, _ = train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, save_model_to_disk=False)
 
                 # Save parameter combination and best accuracy to TensorBoard
                 writer.add_hparams({'model_type': model_type,
@@ -338,7 +346,21 @@ def train_best_model(best_model_settings, dataloaders, num_epochs):
     return
 
 
-def predict_folder(trained_model, image_loader, class_names, device='cuda'):
+def predict_folder(trained_model, class_names, infere_folder, device='cuda'):
+    # get mean and std for normalization
+    mean, std = get_mean_and_std(str(infere_folder))
+
+    # load the data with nearly no augmentations and normalization
+    image_transforms = transforms.Compose([
+        transforms.Resize((224, 224), antialias='warn'),
+        transforms.ToTensor()
+    ])
+    if use_normalize:
+        image_transforms.transforms.append(transforms.Normalize(mean=mean, std=std, inplace=True))
+
+    image_dataset = datasets.ImageFolder(infere_folder, image_transforms)
+    image_loader = torch.utils.data.DataLoader(image_dataset, batch_size=1, shuffle=False, num_workers=0)
+
     # this works similar to validate_model, but it returns the predictions instead of the accuracy, since we don't have labels
     trained_model.eval()
     with torch.no_grad():
@@ -364,7 +386,6 @@ def predict_folder(trained_model, image_loader, class_names, device='cuda'):
 
 # ---------------Main------------------
 if __name__ == '__main__':
-    
     args = parse_args()
     use_normalize = args.use_normalize
     learning_rate = args.learning_rate
@@ -386,30 +407,31 @@ if __name__ == '__main__':
     device = get_device()
     set_seeds(device)
 
-    # Load the data
-    dataloaders, class_names, num_classes = load_and_augment_images(pic_folder_path, batch_size, use_normalize)
 
     # Hyperparameter search
     if hparam_search:
         best_model_settings = hyperparameter_search(
-            model_type=model_type,
-            learning_rate=learning_rate,
-            batch_size=batch_size,
-            train_loader=dataloaders["train"],
-            test_loader=dataloaders["test"],
+            model_types=model_type,
+            learning_rates=learning_rate,
+            batch_sizes=batch_size,
             num_epochs=num_epochs,
+            pic_folder_path=pic_folder_path,
+            use_normalize=use_normalize,
             num_classes=num_classes,
             pretrained=pretrained,
-            reset_classifier_with_custom_layers=reset_classifier_with_custom_layers,
-            load_trained_model=load_trained_model,
+            device=device,
             input_model_path=input_model_path,
-            input_model_name=input_model_name
+            input_model_name=input_model_name,
+            load_trained_model=load_trained_model,
+            reset_classifier_with_custom_layers=reset_classifier_with_custom_layers
         )
         print('Best model settings: {}'.format(best_model_settings))
 
     # Train the model
     if train_network and hparam_search:
         set_seeds()
+        # Load the data
+        dataloaders, class_names, _ = load_and_augment_images(pic_folder_path, best_model_settings['batch_size'], use_normalize)
         train_best_model(best_model_settings, dataloaders, num_epochs)
     
     if train_network and not hparam_search:
@@ -420,21 +442,23 @@ if __name__ == '__main__':
             'batch_size': batch_size,
             'epoches_used': num_epochs
         }
+        # Load the data
+        dataloaders, class_names, _ = load_and_augment_images(pic_folder_path, model_settings['batch_size'], use_normalize)
         train_best_model(model_settings, dataloaders, num_epochs)
 
-    best_model_settings = {
-        'model_type': model_type,
-        'learning_rate': learning_rate,
-        'batch_size': batch_size,
-        'epoches_used': num_epochs
-    }
 
     # Evaluate the model
     if infere_folder:
+        best_model_settings = {
+            'model_type': model_type,
+            'learning_rate': learning_rate,
+            'batch_size': batch_size,
+            'epoches_used': num_epochs
+        }
         # Load the best model
         trained_model = load_model(output_model_path, "model_{}".format(best_model_settings['model_type']))
         # Predict the labels for the test set
-        predict_folder(trained_model, dataloaders["test"], class_names)
+        predict_folder(trained_model, class_names, infere_folder, device=device, use_normalize=use_normalize)
     
     print('Done.')
 # --------------------------------------------
