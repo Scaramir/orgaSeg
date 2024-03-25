@@ -21,17 +21,17 @@ parser = ArgumentParser(
     description='Splits dataset into required format.'
 )
 parser.add_argument("--pic_folder_path", help="The root-folder containing the required subdirectories",
-                    default="./../data/preprocessed", required=False)
+                    default="./../data/data_sets/classification/objects", required=False)
 parser.add_argument("--output_folder_path", help="The output path to write the images to",
-                    default="./../data/data_sets/stardist", required=False)
-parser.add_argument("--class_dirs_to_use", help="Classes/subdirectories to include in the data sets",
-                    default=["images", "masks"], nargs='*', required=False)
+                    default="./../data/data_sets/classification", required=False)
+parser.add_argument("--class_dirs_to_use", help="Folder names to include in the data sets (classes or subdirectories to split into train/test/val sets)",
+                    default=["Branched", "Burned out", "Cyst", "early Branching", "Filled in", "Ring"], nargs='*', required=False)
 parser.add_argument("--train_ratio", help="Ratio of data to be used for training between 0 and 1",
                     default=0.8, required=False)  # .7
 parser.add_argument("--test_ratio", help="Ratio of data to be used for testing between 0 and 1",
-                    default=0.0, required=False)  # .3
+                    default=0.2, required=False)  # .3
 parser.add_argument("--val_ratio", help="Ratio of data to be used for validating between 0 and 1",
-                    default=0.2, required=False)  # stardist expects the test images to be in a folder called `val`, so set this to 0.2 instead
+                    default=0.0, required=False)  # stardist expects the test images to be in a folder called `val`, so set this to 0.2 instead
 args, _ = parser.parse_known_args()  # Ignore unexpected arguments
 
 
@@ -91,7 +91,7 @@ for cls in tqdm(class_dirs_to_use, desc = "Copy train/test/val sets"):
     # Creating partitions of the data after shuffeling
     src = pic_folder_path + '/' + cls  # Folder to copy images from
 
-    allFileNames = glob.glob(src+"/*.tiff")
+    allFileNames = glob.glob(src+"/*.tiff*")
     
     # set seed so you get the same splits of every folder and therefore matching images and masks
     set_seed()
