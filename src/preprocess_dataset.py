@@ -30,6 +30,8 @@ parser.add_argument("-o", "--out", help="Path to output folder.",
                     default="./../data/preprocessed", required=False)
 parser.add_argument("-s", "--size", help="Size of output images.",
                     required=False)
+parser.add_argument("-b", "--bg_elimination", help="Replace background with median color.",
+                    default=False, required=False)
 parser.add_argument("-r", "--replace_vignette", help="Replace vignette with median color.",
                     default=False, required=False)
 args, _ = parser.parse_known_args()  # Ignore unexpected arguments
@@ -50,8 +52,6 @@ OUTPUT_PATH.mkdir(exist_ok=True, parents=True)
 Path(OUTPUT_PATH / "images").mkdir(exist_ok=True, parents=True)
 Path(OUTPUT_PATH / "masks").mkdir(exist_ok=True, parents=True)
 
-# Kernel setup to remove vignette from images:
-kernel_size = 5
 
 # ------------------- #
 # PREPROCESS DATASET  #
@@ -122,6 +122,16 @@ if len(img_files) != len(mask_files):
 
 # The hard work
 i = 0
+def save_resize_crops(args, OUTPUT_PATH, mask_files, i, img_name, img_crops, mask_crops):
+    for j, (img_crop, mask_crop) in enumerate(zip(img_crops, mask_crops)):
+        if args.size:
+            img_crop = Image.fromarray(img_crop)
+            mask_crop = Image.fromarray(mask_crop)
+            img_crop = img_crop.resize((args.size, args.size))
+            mask_crop = mask_crop.resize((args.size, args.size))
+        imwrite(OUTPUT_PATH / "images" / img_name.name.replace('.tiff', f'_{j}.tiff'), img_crop)
+        imwrite(OUTPUT_PATH / "masks" / mask_files[i].name.replace('.tiff', f'_{j}.tiff'), mask_crop)
+
 for img_name in tqdm(img_files, desc="Preprocessing images"):
     # if *small* or other weird stuff in name, continue
     if ('small' in img_name.stem) or ('1_tiff_oaf.jpg' in img_name.stem):
@@ -143,19 +153,15 @@ for img_name in tqdm(img_files, desc="Preprocessing images"):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     if args.replace_vignette:
-        remove_vignette_inplace(img, kernel_size)
+        remove_vignette_inplace(img)
+
+    if args.bg_elimination:
+        img = np.where(mask == 0, np.median(img[mask != 0]), img)
 
     img_crops = four_crop(img)
     mask_crops = four_crop(mask)
 
-    for j, (img_crop, mask_crop) in enumerate(zip(img_crops, mask_crops)):
-        if args.size:
-            img_crop = Image.fromarray(img_crop)
-            mask_crop = Image.fromarray(mask_crop)
-            img_crop = img_crop.resize((args.size, args.size))
-            mask_crop = mask_crop.resize((args.size, args.size))
-        imwrite(OUTPUT_PATH / "images" / img_name.name.replace('.tiff', f'_{j}.tiff'), img_crop)
-        imwrite(OUTPUT_PATH / "masks" / mask_files[i].name.replace('.tiff', f'_{j}.tiff'), mask_crop)
+    save_resize_crops(args, OUTPUT_PATH, mask_files, i, img_name, img_crops, mask_crops)
     i += 1
 
 print("DONE!")
