@@ -9,11 +9,9 @@ import sklearn.metrics
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import lr_scheduler
 from torchmetrics import F1Score
 from torchvision import datasets, transforms
-from captum.attr import LRP
 from torch.utils.tensorboard import SummaryWriter
 import torchvision.models as models
 from sklearn.metrics import confusion_matrix, classification_report
@@ -23,11 +21,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os, sys
 import random
 import warnings
-import time
-import copy
 from mo_nn_helpers import *
 import argparse
 from pathlib import Path
@@ -88,11 +83,12 @@ def load_and_augment_images(pic_folder_path, batch_size, use_normalize=True):
     data_transforms = {
         "train": transforms.Compose([
             transforms.Resize((224, 224), antialias='warn'),
-            transforms.RandomRotation(degrees=(-35, 35)),
+            transforms.RandomRotation(degrees=(-90, 90)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
             transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.4),
-            transforms.ToTensor() # transforms.ToTensor() converts the image to a tensor with values between 0 and 1, should we move this to the beginning of the pipeline?
+            transforms.Grayscale(num_output_channels=3),
+            transforms.ToTensor()
         ]),
         "test": transforms.Compose([
             transforms.Resize((224, 224), antialias='warn'),
@@ -174,7 +170,7 @@ def get_model(model_type, load_trained_model, reset_classifier_with_custom_layer
     return model
 
 
-def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, save_model_to_disk=True, output_model_path="./../../models/", model_type="resnet18", device='cuda'):
+def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, save_model_to_disk=True, output_model_path="./../../models/", global_best_accuracy=None, model_type="resnet18", device='cuda'):
     best_accuracy = 0.0
     epoches_used = 0
     patience = 5
@@ -288,7 +284,7 @@ def hyperparameter_search(model_types, learning_rates, batch_sizes, num_epochs, 
                 scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
                 # Train the model
-                best_accuracy, epoches_used, _, _ = train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, save_model_to_disk=False)
+                best_accuracy, epoches_used, _, _ = train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, model_type, save_model_to_disk=False)
 
                 # Save parameter combination and best accuracy to TensorBoard
                 writer.add_hparams({'model_type': model_type,
