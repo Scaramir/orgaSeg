@@ -31,7 +31,7 @@ from pathlib import Path
 def parse_args():
     parser = argparse.ArgumentParser(description='Neural Network Training')
     parser.add_argument('--use_normalize', type=bool, default=True, help='Whether to use normalization')
-    parser.add_argument('--learning_rate', type=float, default=[0.01, 0.005, 0.0005], nargs='+', help='Learning rate(s) for training')
+    parser.add_argument('--learning_rate', type=float, default=[0.005, 0.001, 0.0005, 0.0003], nargs='+', help='Learning rate(s) for training')
     parser.add_argument('--batch_size', type=int, default=[32, 16], nargs='+', help='Batch size(s) for training')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs for training')
     parser.add_argument('--num_classes', type=int, default=6, help='Number of classes')
@@ -194,6 +194,7 @@ def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs,
                 best_accuracy = val_accuracy
                 # save model
                 if save_model_to_disk:
+                    Path(output_model_path).mkdir(parents=True, exist_ok=True)
                     save_model(model, output_model_path, "model_{}".format(model_type))
 
         epoches_used += 1
@@ -451,6 +452,11 @@ if __name__ == '__main__':
             'batch_size': batch_size,
             'epoches_used': num_epochs
         }
+
+        if len(best_model_settings['model_type']) > 1:
+            print('Multiple model types requested. Using {}.'.format(best_model_settings['model_type'][0]))
+            best_model_settings['model_type'] = best_model_settings['model_type'][0]
+
         # Load the best model
         trained_model = load_model(output_model_path, "model_{}".format(best_model_settings['model_type']))
         # Predict the labels for the test set
