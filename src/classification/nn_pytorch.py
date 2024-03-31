@@ -49,7 +49,6 @@ def parse_args():
     
     # Get only known arguments
     known_args, _ = parser.parse_known_args()
-    
     return known_args
 
 
@@ -175,7 +174,7 @@ def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs,
     epoches_used = 0
     patience = 5
     epochs_without_improvement = 0
-    for epoch in tqdm(range(num_epochs), desc='Training', unit='epoch', leave=False):
+    for epoch in tqdm(range(num_epochs), desc='Training', unit='epoch', leave=True):
         train_loss, train_accuracy, _, _ = train_loop(model, dataloaders, criterion, optimizer, device=device)
         scheduler.step()
         val_loss, val_accuracy, all_predictions, all_labels = validate_model(model, dataloaders, criterion, device=device)
@@ -207,7 +206,7 @@ def train_loop(model, dataloaders, criterion, optimizer, device='cuda'):
     correct = 0
     total = 0
     # train loop
-    for inputs, labels in tqdm(dataloaders["train"], desc='Training', unit='batch', leave=False):
+    for inputs, labels in tqdm(dataloaders["train"], desc='Training', unit='batch', leave=True):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -229,7 +228,7 @@ def validate_model(model, dataloaders, criterion, device='cuda'):
     total = 0
     model.eval()
     with torch.no_grad():
-        for inputs, labels in tqdm(dataloaders["test"], desc='Validation', unit='batch', leave=False):
+        for inputs, labels in tqdm(dataloaders["test"], desc='Validation', unit='batch', leave=True):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             loss = criterion(outputs, labels.long())
@@ -244,7 +243,6 @@ def validate_model(model, dataloaders, criterion, device='cuda'):
             else:
                 all_predicted = predicted
                 all_labels = labels
-            
     # returns
     val_loss /= len(dataloaders["test"])
     val_accuracy = 100 * correct / total
@@ -263,7 +261,7 @@ def hyperparameter_search(model_types, learning_rates, batch_sizes, num_epochs, 
 
     # tqdm magic to update bars    
     total_combinations = len(learning_rates) * len(batch_sizes) * len(model_types)
-    pbar = tqdm(total=total_combinations, desc='Hyperparameter Search')
+    pbar = tqdm(total=total_combinations, desc='Hyperparameter Search', leave=True, unit='combination')
     # This might take a while ... 
     writer = SummaryWriter()
     best_model_settings = {"global_best_accuracy": 0.0}
@@ -285,7 +283,7 @@ def hyperparameter_search(model_types, learning_rates, batch_sizes, num_epochs, 
                 scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
                 # Train the model
-                best_accuracy, epoches_used, _, _ = train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, model_type, save_model_to_disk=False)
+                best_accuracy, epoches_used, _, _ = train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, model_type=model_type, save_model_to_disk=False)
 
                 # Save parameter combination and best accuracy to TensorBoard
                 writer.add_hparams({'model_type': model_type,
@@ -307,6 +305,7 @@ def hyperparameter_search(model_types, learning_rates, batch_sizes, num_epochs, 
                 # tqdm magic to update bars
                 pbar.update(1)
     writer.close()
+    pbar.close()
     return best_model_settings
 
 def train_best_model(best_model_settings, dataloaders, num_epochs):
@@ -371,7 +370,7 @@ def predict_folder(trained_model, class_names, infere_folder, device='cuda'):
             else:
                 all_predicted = predicted
     image_names = image_loader.dataset.samples
-    print(image_names)
+    # print(image_names)
     image_names = [str(Path(image_name[0]).stem) for image_name in image_names]
     all_predicted = all_predicted.cpu().detach().numpy()
     all_predicted = [class_names[prediction] for prediction in all_predicted]
@@ -383,6 +382,10 @@ def predict_folder(trained_model, class_names, infere_folder, device='cuda'):
 
 # ---------------Main------------------
 if __name__ == '__main__':
+
+    # suppress UserWarnings
+    warnings.filterwarnings('ignore')
+
     args = parse_args()
     use_normalize = args.use_normalize
     learning_rate = args.learning_rate

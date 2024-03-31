@@ -23,7 +23,7 @@ def try_make_dir(d):
         os.makedirs(d)
     return
 
-def get_mean_and_std(data_dir):
+def get_mean_and_std(data_dir, print=False, leave_pbar=False):
     '''
     Acquire the mean and std color values of all images (RGB-values) in the training set.
     inpupt: "data_dir" string
@@ -34,14 +34,15 @@ def get_mean_and_std(data_dir):
     train_loader = {x: torch.utils.data.DataLoader(dataset=train_dataset[x], batch_size=1, num_workers=0) for x in ["train"]}
     # Calculate the mean and std of the training set
     channels_sum, channels_squared_sum, num_batches = 0, 0, 0
-    for data, _ in tqdm(train_loader["train"], desc="Calculating mean and std of all RGB-values"):
+    for data, _ in tqdm(train_loader["train"], desc="Calculating mean and std of all RGB-values", leave=leave_pbar):
         channels_sum += torch.mean(data, dim=[0, 2, 3])
         channels_squared_sum += torch.mean(data ** 2, dim=[0, 2, 3])
         num_batches += 1
     mean = channels_sum / num_batches
     #var[x] = E[x**2] - E[X]**2
     std = (channels_squared_sum / num_batches - mean ** 2) ** 0.5
-    print("Mean: ", mean, ", Std: ", std)
+    if print:
+        print("Mean: ", mean, ", Std: ", std)
     return mean, std
 
 
