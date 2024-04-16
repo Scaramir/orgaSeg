@@ -24,7 +24,7 @@ def stardist_train():
         "--epochs 50 "
         "--steps_per_epoch 50 "
         "--mode 2D "
-        "--train_patch_size 528,528"
+        "--train_patch_size 944,944"
     )
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     # Capture the live output
