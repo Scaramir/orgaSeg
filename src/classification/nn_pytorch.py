@@ -5,6 +5,7 @@ This is just a prototype sketch and can be seen as a starting point for the impl
 NOTE: WIP - not finished yet
 """
 
+from tqdm.autonotebook import tqdm
 import sklearn.metrics
 import torch
 import torch.nn as nn
@@ -16,7 +17,6 @@ from torch.utils.tensorboard import SummaryWriter
 import torchvision.models as models
 from sklearn.metrics import confusion_matrix, classification_report
 from pathlib import Path
-from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -31,7 +31,7 @@ from pathlib import Path
 def parse_args():
     parser = argparse.ArgumentParser(description='Neural Network Training')
     parser.add_argument('--use_normalize', type=bool, default=True, help='Whether to use normalization')
-    parser.add_argument('--learning_rate', type=float, default=[0.005, 0.0003, 0.0001], nargs='+', help='Learning rate(s) for training')
+    parser.add_argument('--learning_rate', type=float, default=[0.005, 0.003, 0.0001], nargs='+', help='Learning rate(s) for training')
     parser.add_argument('--batch_size', type=int, default=[16], nargs='+', help='Batch size(s) for training')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs for training')
     parser.add_argument('--num_classes', type=int, default=6, help='Number of classes')
@@ -218,7 +218,9 @@ def train_model(
     epoches_used = 0
     patience = 5
     epochs_without_improvement = 0
-    for epoch in tqdm(range(num_epochs), desc="Training", unit="epoch", leave=True):
+    for epoch in tqdm(
+        range(num_epochs), desc="Training", unit="epoch", leave=True, position=1
+    ):
         train_loss, train_accuracy, _, _ = train_loop(
             model, dataloaders, criterion, optimizer, device=device
         )
@@ -257,7 +259,11 @@ def train_loop(model, dataloaders, criterion, optimizer, device="cuda"):
     total = 0
     # train loop
     for inputs, labels in tqdm(
-        dataloaders["train"], desc="Training", unit="batch", leave=True
+        dataloaders["train"],
+        desc="Epoch progress",
+        unit="batch",
+        leave=True,
+        position=2,
     ):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
@@ -282,7 +288,7 @@ def validate_model(model, dataloaders, criterion, device="cuda"):
     model.eval()
     with torch.no_grad():
         for inputs, labels in tqdm(
-            dataloaders["test"], desc="Validation", unit="batch", leave=True
+            dataloaders["test"], desc="Validation", unit="batch", leave=True, position=2
         ):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
@@ -340,6 +346,7 @@ def hyperparameter_search(
         desc="Hyperparameter Search",
         leave=True,
         unit="combination",
+        position=0,
     )
     # This might take a while ...
     writer = SummaryWriter()
@@ -347,6 +354,7 @@ def hyperparameter_search(
     for model_type in model_types:
         for learning_rate in learning_rates:
             for batch_size in batch_sizes:
+                print("Currently training Model: {}, Learning rate: {}, Batch size: {}".format(model_type, learning_rate, batch_size))
                 set_seeds(123420)
                 # Define the data loaders
                 dataloaders, _, _ = load_and_augment_images(
@@ -411,7 +419,7 @@ def hyperparameter_search(
     return best_model_settings
 
 
-def train_best_model(best_model_settings, dataloaders, num_epochs):
+def train_best_model(best_model_settings, num_epochs):
     # Create an instance of the model for each parameter combination
     model = get_model(
         model_type=best_model_settings["model_type"],
@@ -424,9 +432,16 @@ def train_best_model(best_model_settings, dataloaders, num_epochs):
         input_model_name=input_model_name,
     )
 
+    # Load the data
+    dataloaders, class_names, _ = load_and_augment_images(
+        pic_folder_path, best_model_settings["batch_size"], use_normalize
+    )
+
     # NOTE: technically hyperparameter, but we're sticking to those for now
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adamax(model.parameters(), lr=best_model_settings["learning_rate"])
+    optimizer = optim.Adamax(
+        model.parameters(), lr=best_model_settings["learning_rate"]
+    )
     scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
     # Train the model
@@ -550,11 +565,7 @@ if __name__ == "__main__":
     # Train the model
     if train_network and hparam_search:
         set_seeds()
-        # Load the data
-        dataloaders, class_names, _ = load_and_augment_images(
-            pic_folder_path, best_model_settings["batch_size"], use_normalize
-        )
-        train_best_model(best_model_settings, dataloaders, num_epochs)
+        train_best_model(best_model_settings, num_epochs)
 
     if train_network and not hparam_search:
         set_seeds()
@@ -573,12 +584,13 @@ if __name__ == "__main__":
 
     # Evaluate the model
     if infere_folder:
-        best_model_settings = {
-            "model_type": model_type,
-            "learning_rate": learning_rate,
-            "batch_size": batch_size,
-            "epoches_used": num_epochs,
-        }
+        if not hparam_search:
+            best_model_settings = {
+                "model_type": model_type,
+                "learning_rate": learning_rate,
+                "batch_size": batch_size,
+                "epoches_used": num_epochs,
+            }
 
         if len(best_model_settings["model_type"]) > 1:
             print(
@@ -596,7 +608,7 @@ if __name__ == "__main__":
         predict_folder(
             trained_model,
             class_names,
-            infere_folder,
+            pic_folder_path,
             device=device,
             use_normalize=use_normalize,
         )
