@@ -11,7 +11,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
-from torchmetrics import F1Score
 from torchvision import datasets, transforms
 from torch.utils.tensorboard import SummaryWriter
 import torchvision.models as models
@@ -31,19 +30,19 @@ from pathlib import Path
 def parse_args():
     parser = argparse.ArgumentParser(description='Neural Network Training')
     parser.add_argument('--use_normalize', type=bool, default=True, help='Whether to use normalization')
-    parser.add_argument('--learning_rate', type=float, default=[0.005, 0.003, 0.0001], nargs='+', help='Learning rate(s) for training')
-    parser.add_argument('--batch_size', type=int, default=[16], nargs='+', help='Batch size(s) for training')
+    parser.add_argument('--learning_rate', type=float, default=[0.001, 0.005, 0.0005, 0.0001], nargs='+', help='Learning rate(s) for training')
+    parser.add_argument('--batch_size', type=int, default=[48, 24, 16, 12], nargs='+', help='Batch size(s) for training')
     parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs for training')
     parser.add_argument('--num_classes', type=int, default=6, help='Number of classes')
-    parser.add_argument('--load_trained_model', type=bool, default=False, help='Whether to load a trained model')
+    parser.add_argument('--load_trained_model', type=bool, default=False, help='Whether to load a trained model from your disk')
     parser.add_argument('--reset_classifier_with_custom_layers', type=bool, default=True, help='Whether to reset the classifier with custom layers')
     parser.add_argument('--train_network', type=bool, default=True, help='Whether to train the network')
     parser.add_argument('--infere_folder', type=bool, default=True, help='Whether to evaluate the network')
     parser.add_argument('--model_type', type=str, default=['resnet18', 'resnext50_32x4d'], nargs='+', help='Type(s) of the model(s) to use for training')
-    parser.add_argument('--pretrained', type=bool, default=True, help='Whether to use pretrained weights')
-    parser.add_argument('--pic_folder_path', type=Path, default=Path('./../../data/data_sets/classification/'), help='Path to the picture folder')
-    parser.add_argument('--input_model_path', type=Path, default=None, help='Path to the input model')
-    parser.add_argument('--input_model_name', type=str, default=None, help='Name of the input model')
+    parser.add_argument('--pretrained', type=bool, default=True, help='Whether to use pretrained models.')
+    parser.add_argument('--pic_folder_path', type=Path, default=Path('./../../data/data_sets/classification/'), help='Path to the picture folder. It contains a `train` and a `test` folder with the pictures.')
+    parser.add_argument('--input_model_path', type=Path, default=None, help='Path to your input model')
+    parser.add_argument('--input_model_name', type=str, default=None, help='Name of your input model')
     parser.add_argument('--output_model_path', type=Path, default=Path('./../../models/'), help='Path to the output model')
     parser.add_argument('--hparam_seach', type=bool, default=True, help='Whether to perform hyperparameter search')
 
@@ -85,18 +84,23 @@ def load_and_augment_images(pic_folder_path, batch_size, use_normalize=True):
         "train": transforms.Compose(
             [
                 transforms.Resize((224, 224), antialias="warn"),
-                transforms.RandomRotation(degrees=(-90, 90)),
+                transforms.RandomRotation(degrees=(-75, 75)),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
-                transforms.ColorJitter(
-                    brightness=0.3, contrast=0.3, saturation=0.3, hue=0.4
-                ),
                 transforms.Grayscale(num_output_channels=3),
+                transforms.ColorJitter(
+                    brightness=0.35, contrast=0.35, saturation=0.3, hue=0.4
+                ),
                 transforms.ToTensor(),
+                transforms.RandomPerspective(distortion_scale=0.3, p=0.5),
             ]
         ),
         "test": transforms.Compose(
-            [transforms.Resize((224, 224), antialias="warn"), transforms.ToTensor()]
+            [
+                transforms.Resize((224, 224), antialias="warn"),
+                transforms.Grayscale(num_output_channels=3),
+                transforms.ToTensor(),
+            ]
         ),
     }
     if use_normalize:
@@ -181,6 +185,8 @@ def get_model(
             print("Model type not found.")
             return None
 
+    print("Model '{}' loaded.".format(model_type))
+
     if reset_classifier_with_custom_layers:
         # TODO: change access to in_features to replace classifier in case a model requires it
         model.fc = nn.Sequential(
@@ -195,8 +201,9 @@ def get_model(
         #                            nn.Linear(256, 100),
         #                            nn.ReLU(inplace=True),
         #                            nn.Linear(100, num_classes))
+        print("Custom classifier layers set.")
+    
     model = model.to(device)
-    print("Done.")
     return model
 
 
@@ -243,8 +250,11 @@ def train_model(
                 best_accuracy = val_accuracy
                 # save model
                 if save_model_to_disk:
-                    Path(output_model_path).mkdir(parents=True, exist_ok=True)
+                    outpath = Path(output_model_path)
+                    outpath.mkdir(parents=True, exist_ok=True)
                     save_model(model, output_model_path, "model_{}".format(model_type))
+                    # print complete resolved path
+                    print("Model saved to: {}".format(outpath.resolve()))
 
         epoches_used += 1
     return best_accuracy, epoches_used, all_predictions, all_labels
@@ -333,11 +343,11 @@ def hyperparameter_search(
         print(
             "Warning: Number of epochs is less than 5. This might not be enough to get meaningful results."
         )
-    if num_epochs > 20:
+    if num_epochs > 8:
         print(
-            "Warning: Number of epochs is greater than 20. It will be capped to 20 so find the best configuration faster. You can retrain the best model with more epochs later on if needed."
+            "Warning: Number of epochs is greater than 8. It will be capped at 10 so find the best configuration faster. You can retrain the best model with more epochs later on if needed."
         )
-        num_epochs = 20
+        num_epochs = 8
 
     # tqdm magic to update bars
     total_combinations = len(learning_rates) * len(batch_sizes) * len(model_types)
@@ -411,6 +421,8 @@ def hyperparameter_search(
                         "batch_size": batch_size,
                         "epoches_used": epoches_used,
                     }
+                    print("New best model found: {}".format(best_model_settings))
+                    save_model(model, "./../../models/", "model_{}".format(model_type))
 
                 # tqdm magic to update bars
                 pbar.update(1)
@@ -420,7 +432,11 @@ def hyperparameter_search(
 
 
 def train_best_model(best_model_settings, num_epochs):
-    # Create an instance of the model for each parameter combination
+    # Load the data
+    dataloaders, class_names, _ = load_and_augment_images(
+        pic_folder_path, best_model_settings["batch_size"], use_normalize
+    )
+
     model = get_model(
         model_type=best_model_settings["model_type"],
         load_trained_model=load_trained_model,
@@ -432,12 +448,6 @@ def train_best_model(best_model_settings, num_epochs):
         input_model_name=input_model_name,
     )
 
-    # Load the data
-    dataloaders, class_names, _ = load_and_augment_images(
-        pic_folder_path, best_model_settings["batch_size"], use_normalize
-    )
-
-    # NOTE: technically hyperparameter, but we're sticking to those for now
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adamax(
         model.parameters(), lr=best_model_settings["learning_rate"]
@@ -447,7 +457,7 @@ def train_best_model(best_model_settings, num_epochs):
     # Train the model
     writer = SummaryWriter()
     best_accuracy, epoches_used, all_predictions, all_labels = train_model(
-        model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer
+        model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, model_type=best_model_settings["model_type"]
     )
     all_predictions = all_predictions.cpu().detach().numpy()
     all_labels = all_labels.cpu().detach().numpy()
@@ -464,9 +474,9 @@ def train_best_model(best_model_settings, num_epochs):
     cm = confusion_matrix(all_labels, all_predictions)
     df_cm = pd.DataFrame(cm, index=class_names, columns=class_names)
     plt.figure(figsize=(10, 7))
-    sns.heatmap(df_cm, annot=True, cmap="Blues", fmt="g")
+    sns.heatmap(df_cm, annot=True, cmap="Blues", fmt="d")  # Use "d" format specifier to display amounts per cell
     plt.xlabel("Predicted")
-    plt.ylabel("True")
+    plt.ylabel("Ground truth")
     plt.show()
     # classification report
     print(classification_report(all_labels, all_predictions, target_names=class_names))
@@ -592,11 +602,11 @@ if __name__ == "__main__":
                 "epoches_used": num_epochs,
             }
 
-        if len(best_model_settings["model_type"]) > 1:
+        if isinstance(best_model_settings["model_type"], list) and len(best_model_settings["model_type"]) > 1:
             print(
-                "Multiple model types requested. Using {}.".format(
-                    best_model_settings["model_type"][0]
-                )
+            "Multiple model types requested. Using {}.".format(
+                best_model_settings["model_type"][0]
+            )
             )
             best_model_settings["model_type"] = best_model_settings["model_type"][0]
 
