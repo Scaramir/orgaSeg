@@ -5,46 +5,110 @@ This is just a prototype sketch and can be seen as a starting point for the impl
 NOTE: WIP - not finished yet
 """
 
-from tqdm.autonotebook import tqdm
+import argparse
+import random
+import warnings
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 import sklearn.metrics
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim import lr_scheduler
-from torchvision import datasets, transforms
-from torch.utils.tensorboard import SummaryWriter
 import torchvision.models as models
-from sklearn.metrics import confusion_matrix, classification_report
-from pathlib import Path
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import random
-import warnings
 from mo_nn_helpers import *
-import argparse
-from pathlib import Path
+from sklearn.metrics import classification_report, confusion_matrix
+from torch.optim import lr_scheduler
+from torch.utils.tensorboard import SummaryWriter
+from torchvision import datasets, transforms
+from tqdm.autonotebook import tqdm
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Neural Network Training')
-    parser.add_argument('--use_normalize', type=bool, default=True, help='Whether to use normalization')
-    parser.add_argument('--learning_rate', type=float, default=[0.001, 0.005, 0.0005, 0.0001], nargs='+', help='Learning rate(s) for training')
-    parser.add_argument('--batch_size', type=int, default=[48, 24, 16, 12], nargs='+', help='Batch size(s) for training')
-    parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs for training')
-    parser.add_argument('--num_classes', type=int, default=6, help='Number of classes')
-    parser.add_argument('--load_trained_model', type=bool, default=False, help='Whether to load a trained model from your disk')
-    parser.add_argument('--reset_classifier_with_custom_layers', type=bool, default=True, help='Whether to reset the classifier with custom layers')
-    parser.add_argument('--train_network', type=bool, default=True, help='Whether to train the network')
-    parser.add_argument('--infere_folder', type=bool, default=True, help='Whether to evaluate the network')
-    parser.add_argument('--model_type', type=str, default=['resnet18', 'resnext50_32x4d'], nargs='+', help='Type(s) of the model(s) to use for training')
-    parser.add_argument('--pretrained', type=bool, default=True, help='Whether to use pretrained models.')
-    parser.add_argument('--pic_folder_path', type=Path, default=Path('./../../data/data_sets/classification/'), help='Path to the picture folder. It contains a `train` and a `test` folder with the pictures.')
-    parser.add_argument('--input_model_path', type=Path, default=None, help='Path to your input model')
-    parser.add_argument('--input_model_name', type=str, default=None, help='Name of your input model')
-    parser.add_argument('--output_model_path', type=Path, default=Path('./../../models/'), help='Path to the output model')
-    parser.add_argument('--hparam_seach', type=bool, default=True, help='Whether to perform hyperparameter search')
+    parser = argparse.ArgumentParser(description="Neural Network Training")
+    parser.add_argument(
+        "--use_normalize", type=bool, default=True, help="Whether to use normalization"
+    )
+    # parser.add_argument('--learning_rate', type=float, default=[0.001, 0.0005, 0.0003, 0.0001], nargs='+', help='Learning rate(s) for training')
+    parser.add_argument(
+        "--learning_rate",
+        type=float,
+        default=[0.0005],
+        nargs="+",
+        help="Learning rate(s) for training",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=[48],
+        nargs="+",
+        help="Batch size(s) for training",
+    )
+    parser.add_argument(
+        "--num_epochs", type=int, default=50, help="Number of epochs for training"
+    )
+    parser.add_argument("--num_classes", type=int, default=6, help="Number of classes")
+    parser.add_argument(
+        "--load_trained_model",
+        type=bool,
+        default=False,
+        help="Whether to load a trained model from your disk",
+    )
+    parser.add_argument(
+        "--reset_classifier_with_custom_layers",
+        type=bool,
+        default=True,
+        help="Whether to reset the classifier with custom layers",
+    )
+    parser.add_argument(
+        "--train_network", type=bool, default=True, help="Whether to train the network"
+    )
+    parser.add_argument(
+        "--infere_folder",
+        type=bool,
+        default=True,
+        help="Whether to evaluate the network",
+    )
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        default=["resnet18", "resnext50_32x4d", "wide_resnet50_2"],
+        nargs="+",
+        help="Type(s) of the model(s) to use for hyperparameter search. If multiple model types are set for training or inference, the first one will be used.",
+    )
+    parser.add_argument(
+        "--pretrained",
+        type=bool,
+        default=True,
+        help="Whether to use pretrained models.",
+    )
+    parser.add_argument(
+        "--pic_folder_path",
+        type=Path,
+        default=Path("./../../data/data_sets/classification/"),
+        help="Path to the picture folder. It contains a `train` and a `test` folder with the pictures.",
+    )
+    parser.add_argument(
+        "--input_model_path", type=Path, default=None, help="Path to your input model"
+    )
+    parser.add_argument(
+        "--input_model_name", type=str, default=None, help="Name of your input model"
+    )
+    parser.add_argument(
+        "--output_model_path",
+        type=Path,
+        default=Path("./../../models/"),
+        help="Path to the output model",
+    )
+    parser.add_argument(
+        "--hparam_seach",
+        type=bool,
+        default=True,
+        help="Whether to perform hyperparameter search",
+    )
 
     # Get only known arguments
     known_args, _ = parser.parse_known_args()
@@ -62,7 +126,7 @@ def get_device():
 
 
 # set seeds for reproducibility
-def set_seeds(device="cuda", seed=12342069):
+def set_seeds(device="cuda", seed=123420):
     random.seed(seed)
     np.random.seed(seed + 1)
     torch.random.manual_seed(seed + 2)
@@ -202,7 +266,7 @@ def get_model(
         #                            nn.ReLU(inplace=True),
         #                            nn.Linear(100, num_classes))
         print("Custom classifier layers set.")
-    
+
     model = model.to(device)
     return model
 
@@ -364,8 +428,12 @@ def hyperparameter_search(
     for model_type in model_types:
         for learning_rate in learning_rates:
             for batch_size in batch_sizes:
-                print("Currently training Model: {}, Learning rate: {}, Batch size: {}".format(model_type, learning_rate, batch_size))
-                set_seeds(123420)
+                print(
+                    "Currently training Model: {}, Learning rate: {}, Batch size: {}".format(
+                        model_type, learning_rate, batch_size
+                    )
+                )
+                set_seeds()
                 # Define the data loaders
                 dataloaders, _, _ = load_and_augment_images(
                     pic_folder_path, batch_size, use_normalize
@@ -457,8 +525,16 @@ def train_best_model(best_model_settings, num_epochs):
     # Train the model
     writer = SummaryWriter()
     best_accuracy, epoches_used, all_predictions, all_labels = train_model(
-        model, dataloaders, criterion, optimizer, scheduler, num_epochs, writer, model_type=best_model_settings["model_type"]
+        model,
+        dataloaders,
+        criterion,
+        optimizer,
+        scheduler,
+        num_epochs,
+        writer,
+        model_type=best_model_settings["model_type"],
     )
+
     all_predictions = all_predictions.cpu().detach().numpy()
     all_labels = all_labels.cpu().detach().numpy()
     # Save parameter combination and best accuracy to TensorBoard
@@ -474,7 +550,9 @@ def train_best_model(best_model_settings, num_epochs):
     cm = confusion_matrix(all_labels, all_predictions)
     df_cm = pd.DataFrame(cm, index=class_names, columns=class_names)
     plt.figure(figsize=(10, 7))
-    sns.heatmap(df_cm, annot=True, cmap="Blues", fmt="d")  # Use "d" format specifier to display amounts per cell
+    sns.heatmap(
+        df_cm, annot=True, cmap="Blues"
+    )  # Use "d" format specifier to display amounts per cell
     plt.xlabel("Predicted")
     plt.ylabel("Ground truth")
     plt.show()
@@ -551,7 +629,7 @@ if __name__ == "__main__":
     hparam_search = args.hparam_seach
 
     device = get_device()
-    set_seeds(device)
+    # set_seeds(device)
 
     # Hyperparameter search
     if hparam_search:
@@ -580,35 +658,39 @@ if __name__ == "__main__":
     if train_network and not hparam_search:
         set_seeds()
         model_settings = {
-            "model_type": model_type,
-            "learning_rate": learning_rate,
-            "batch_size": batch_size,
+            "model_type": model_type[0],
+            "learning_rate": learning_rate[0],
+            "batch_size": batch_size[0],
             "epoches_used": num_epochs,
         }
-        print("Model settings taken from arguments instead hparam search.")
-        # Load the data
-        dataloaders, class_names, _ = load_and_augment_images(
-            pic_folder_path, model_settings["batch_size"], use_normalize
-        )
-        train_best_model(model_settings, dataloaders, num_epochs)
+        print("Model settings taken from arguments.")
+
+        train_best_model(model_settings, num_epochs)
 
     # Evaluate the model
     if infere_folder:
         if not hparam_search:
             best_model_settings = {
                 "model_type": model_type,
-                "learning_rate": learning_rate,
-                "batch_size": batch_size,
+                "learning_rate": learning_rate[0],
+                "batch_size": batch_size[0],
                 "epoches_used": num_epochs,
             }
 
-        if isinstance(best_model_settings["model_type"], list) and len(best_model_settings["model_type"]) > 1:
+        if (
+            isinstance(best_model_settings["model_type"], list)
+            and len(best_model_settings["model_type"]) > 1
+        ):
             print(
-            "Multiple model types requested. Using {}.".format(
-                best_model_settings["model_type"][0]
-            )
+                "Multiple model types requested. Using {}.".format(
+                    best_model_settings["model_type"][0]
+                )
             )
             best_model_settings["model_type"] = best_model_settings["model_type"][0]
+
+        dataloaders, class_names, _ = load_and_augment_images(
+            pic_folder_path, best_model_settings["batch_size"], use_normalize
+        )
 
         # Load the best model
         trained_model = load_model(
