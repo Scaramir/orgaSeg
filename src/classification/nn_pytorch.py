@@ -36,19 +36,19 @@ def parse_args():
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=[0.0005],
+        default=[0.001, 0.0005, 0.0001],
         nargs="+",
         help="Learning rate(s) for training",
     )
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=[48],
+        default=[16, 20, 32, 48],
         nargs="+",
         help="Batch size(s) for training",
     )
     parser.add_argument(
-        "--num_epochs", type=int, default=50, help="Number of epochs for training"
+        "--num_epochs", type=int, default=80, help="Number of epochs for training"
     )
     parser.add_argument("--num_classes", type=int, default=6, help="Number of classes")
     parser.add_argument(
@@ -88,7 +88,7 @@ def parse_args():
     parser.add_argument(
         "--pic_folder_path",
         type=Path,
-        default=Path("./../../data/data_sets/classification/"),
+        default=Path("./../../data/data_sets/classification/big_data_set"),
         help="Path to the picture folder. It contains a `train` and a `test` folder with the pictures.",
     )
     parser.add_argument(
@@ -100,7 +100,7 @@ def parse_args():
     parser.add_argument(
         "--output_model_path",
         type=Path,
-        default=Path("./../../models/"),
+        default=Path("./../../models"),
         help="Path to the output model",
     )
     parser.add_argument(
@@ -147,21 +147,21 @@ def load_and_augment_images(pic_folder_path, batch_size, use_normalize=True):
     data_transforms = {
         "train": transforms.Compose(
             [
-                transforms.Resize((224, 224), antialias="warn"),
+                transforms.Resize((224, 224), antialias=True),
                 transforms.RandomRotation(degrees=(-75, 75)),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
                 transforms.Grayscale(num_output_channels=3),
                 transforms.ColorJitter(
-                    brightness=0.35, contrast=0.35, saturation=0.3, hue=0.4
+                    brightness=0.3, contrast=0.3, saturation=0.3, hue=0.2
                 ),
                 transforms.ToTensor(),
-                transforms.RandomPerspective(distortion_scale=0.3, p=0.5),
+                transforms.RandomPerspective(distortion_scale=0.3, p=0.3),
             ]
         ),
         "test": transforms.Compose(
             [
-                transforms.Resize((224, 224), antialias="warn"),
+                transforms.Resize((224, 224), antialias=True),
                 transforms.Grayscale(num_output_channels=3),
                 transforms.ToTensor(),
             ]
@@ -255,7 +255,8 @@ def get_model(
         # TODO: change access to in_features to replace classifier in case a model requires it
         model.fc = nn.Sequential(
             nn.Linear(model.fc.in_features, 256),
-            nn.Dropout(p=0.4, inplace=True),
+            # nn.ReLU(inplace=True),
+            nn.Dropout(p=0.4), # not inplace?
             nn.Linear(256, 100),
             nn.ReLU(inplace=True),
             nn.Linear(100, num_classes),
@@ -290,7 +291,7 @@ def train_model(
     patience = 5
     epochs_without_improvement = 0
     for epoch in tqdm(
-        range(num_epochs), desc="Training", unit="epoch", leave=True, position=1
+        range(num_epochs), desc="Training", unit="epoch", leave=False, position=1
     ):
         train_loss, train_accuracy, _, _ = train_loop(
             model, dataloaders, criterion, optimizer, device=device
@@ -336,7 +337,7 @@ def train_loop(model, dataloaders, criterion, optimizer, device="cuda"):
         dataloaders["train"],
         desc="Epoch progress",
         unit="batch",
-        leave=True,
+        leave=False,
         position=2,
     ):
         inputs, labels = inputs.to(device), labels.to(device)
@@ -362,7 +363,7 @@ def validate_model(model, dataloaders, criterion, device="cuda"):
     model.eval()
     with torch.no_grad():
         for inputs, labels in tqdm(
-            dataloaders["test"], desc="Validation", unit="batch", leave=True, position=2
+            dataloaders["test"], desc="Validation", unit="batch", leave=False, position=2
         ):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
@@ -453,7 +454,7 @@ def hyperparameter_search(
 
                 # NOTE: technically hyperparameter, but we're sticking to those for now
                 criterion = nn.CrossEntropyLoss()
-                optimizer = optim.Adamax(model.parameters(), lr=learning_rate)
+                optimizer = optim.Adamax(model.parameters(), lr=learning_rate, weight_decay=3e-4)
                 scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
                 # Train the model
@@ -518,7 +519,7 @@ def train_best_model(best_model_settings, num_epochs):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adamax(
-        model.parameters(), lr=best_model_settings["learning_rate"]
+        model.parameters(), lr=best_model_settings["learning_rate"], weight_decay=3e-4
     )
     scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
@@ -550,9 +551,7 @@ def train_best_model(best_model_settings, num_epochs):
     cm = confusion_matrix(all_labels, all_predictions)
     df_cm = pd.DataFrame(cm, index=class_names, columns=class_names)
     plt.figure(figsize=(10, 7))
-    sns.heatmap(
-        df_cm, annot=True, cmap="Blues"
-    )  # Use "d" format specifier to display amounts per cell
+    sns.heatmap(df_cm, annot=True, cmap="Blues", fmt="d")
     plt.xlabel("Predicted")
     plt.ylabel("Ground truth")
     plt.show()
