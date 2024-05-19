@@ -140,7 +140,7 @@ for annotation_file_name in tqdm(annotation_file_names, desc="Creating maps"):
 
                 segmentation_fill -= segmentation_step_size
             except ValueError:
-                print(f"Error in {annotation_file_name}. Skipping an objekt, because less semi-pixels would have to be drawn when creating a mask.")
+                print(f"Error in {annotation_file_name}. Skipping an objekt, because pixels with size <1 would have to be drawn when creating a mask.")
 
 
     export_tiff(segmentation_map, annotation_file_name, "segmentation")
