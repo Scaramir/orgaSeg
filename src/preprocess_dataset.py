@@ -23,13 +23,13 @@ parser = ArgumentParser(
     description='Preprocess dataset to make it more uniform.'
 )
 parser.add_argument("-raw_img_path", help="Path to raw image folder.",
-                    default="./../data/raw_data/raw_images", required=False)
+                    default="./../data/raw_data/raw_images/big_data_set", required=False)
 parser.add_argument("-raw_mask_path", help="Path to raw annotation folder containing JSON files.",
-                    default="./../data/preprocessed/anno_to_mask", required=False)
+                    default="./../data/preprocessed/anno_to_mask/big_data_set", required=False)
 parser.add_argument("-o", "--out", help="Path to output folder.",
-                    default="./../data/preprocessed", required=False)
-parser.add_argument("-s", "--size", help="Size of output images.",
-                    required=False)
+                    default="./../data/preprocessed/big_data_set", required=False)
+parser.add_argument("-s", "--size", help="Size of output images. 1 is normal size, 0.5 is half size, etc.", 
+                    default = 0.5, required=False)
 parser.add_argument("-b", "--bg_elimination", help="Replace background with median color.",
                     default=False, required=False)
 parser.add_argument("-r", "--replace_vignette", help="Replace vignette with median color.",
@@ -125,10 +125,9 @@ i = 0
 def save_resize_crops(args, OUTPUT_PATH, mask_files, i, img_name, img_crops, mask_crops):
     for j, (img_crop, mask_crop) in enumerate(zip(img_crops, mask_crops)):
         if args.size:
-            img_crop = Image.fromarray(img_crop)
-            mask_crop = Image.fromarray(mask_crop)
-            img_crop = img_crop.resize((args.size, args.size))
-            mask_crop = mask_crop.resize((args.size, args.size))
+            # resize image and mask, without using compression algorithms
+            img_crop = cv2.resize(img_crop, (0, 0), fx=args.size, fy=args.size)
+            mask_crop = cv2.resize(mask_crop, (0, 0), fx=args.size, fy=args.size)
         imwrite(OUTPUT_PATH / "images" / img_name.name.replace('.tiff', f'_{j}.tiff'), img_crop)
         imwrite(OUTPUT_PATH / "masks" / mask_files[i].name.replace('.tiff', f'_{j}.tiff'), mask_crop)
 
