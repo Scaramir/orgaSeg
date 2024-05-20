@@ -118,8 +118,8 @@ for annotation_file_name in tqdm(annotation_file_names, desc="Creating maps"):
     segmentation_step_size = 255 // max(sum(map(len, img_annotations.values())), 1)
     segmentation_fill = 255
     for class_label, class_annotations in img_annotations.items():
-        if class_label.lower() == "unsure":
-            continue
+        # if class_label.lower() == "unsure":
+        #     continue
         draw = ImageDraw.Draw(class_maps[class_label.lower()])
         step_size = 255 // len(class_annotations)
         for i, annotation_coordinates in enumerate(class_annotations):
