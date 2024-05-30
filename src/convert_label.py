@@ -135,7 +135,7 @@ for annotation_file_name in tqdm(annotation_file_names, desc="Creating maps"):
                     list(map(tuple, annotation_coordinates)), fill=255 - i * step_size
                 )
                 segmentation_draw.polygon(
-                    list(map(tuple, annotation_coordinates)), fill=segmentation_fill
+                    list(map(tuple, annotation_coordinates)), fill=segmentation_fill, width=0, outline=0
                 )
 
                 segmentation_fill -= segmentation_step_size
