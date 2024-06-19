@@ -32,7 +32,6 @@ def parse_args():
     parser.add_argument(
         "--use_normalize", type=bool, default=True, help="Whether to use normalization"
     )
-    # parser.add_argument('--learning_rate', type=float, default=[0.001, 0.0005, 0.0003, 0.0001], nargs='+', help='Learning rate(s) for training')
     parser.add_argument(
         "--learning_rate",
         type=float,
@@ -252,20 +251,22 @@ def get_model(
     print("Model '{}' loaded.".format(model_type))
 
     if reset_classifier_with_custom_layers:
-        # TODO: change access to in_features to replace classifier in case a model requires it
-        model.fc = nn.Sequential(
-            nn.Linear(model.fc.in_features, 256),
-            # nn.ReLU(inplace=True),
-            nn.Dropout(p=0.4), # not inplace?
-            nn.Linear(256, 100),
-            nn.ReLU(inplace=True),
-            nn.Linear(100, num_classes),
-        )
-        # model.classifier = nn.Sequential(nn.Linear(model.classifier.in_features, 256),
-        #                            nn.Dropout(p=0.4, inplace=True),
-        #                            nn.Linear(256, 100),
-        #                            nn.ReLU(inplace=True),
-        #                            nn.Linear(100, num_classes))
+        try:
+            model.fc = nn.Sequential(
+                nn.Linear(model.fc.in_features, 256),
+                nn.Dropout(p=0.4), # not inplace?
+                nn.Linear(256, 100),
+                nn.ReLU(inplace=True),
+                nn.Linear(100, num_classes),
+            )
+        except:
+            model.classifier = nn.Sequential(
+                nn.Linear(model.classifier.in_features, 256),
+                nn.Dropout(p=0.4, inplace=True),
+                nn.Linear(256, 100),
+                nn.ReLU(inplace=True),
+                nn.Linear(100, num_classes)
+            )
         print("Custom classifier layers set.")
 
     model = model.to(device)
@@ -387,7 +388,6 @@ def validate_model(model, dataloaders, criterion, device="cuda"):
 
 # Perform hyperparameter grid search and save results to TensorBoard
 # train only for 5 epochs to save time
-# TODO: pass hyperparams as dict or class object
 def hyperparameter_search(
     model_types,
     learning_rates,

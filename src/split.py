@@ -1,7 +1,7 @@
 """
 Maximilian Otto, 2022, @scaramir
 Split the data of different classes/folders into test, train and validation folders with the desired ratio
-The datasets get random shuffled before splitting.   
+The datasets get randomly shuffled before splitting.   
 """
 
 import shutil
@@ -17,26 +17,24 @@ from typing import List
 
 # Parse arguments
 parser = ArgumentParser(
-    prog="split.py", description="Splits dataset into required format."
+    prog="split.py",
+    description="Splits a dataset into a train/val/test format. This script expects one or more folders containing *.tiff* files.",
 )
 parser.add_argument(
     "--pic_folder_path",
-    help="The root-folder containing the required subdirectories",
-    # default="./../data/data_sets/classification/big_data_set/objects",
+    help="The root-folder containing the required folder, where each folder to be split should contain the images.",
     default="./../data/preprocessed/big_data_set",
     required=False,
 )
 parser.add_argument(
     "--output_folder_path",
     help="The output path to write the images to",
-    # default="./../data/data_sets/classification/big_data_set",
     default="./../data/data_sets/stardist/big_data_set",
     required=False,
 )
 parser.add_argument(
     "--class_dirs_to_use",
     help="Folder names to include in the data sets (classes or subdirectories to split into train/test/val sets)",
-    # default=["Branched", "Burned out", "Cyst", "Early Branching", "Filled in", "Ring"],
     default=["images", "masks"],
     nargs="*",
     required=False,
@@ -44,24 +42,23 @@ parser.add_argument(
 parser.add_argument(
     "--train_ratio",
     help="Ratio of data to be used for training between 0 and 1",
-    default=0.9,
+    default=0.8,
     required=False,
 )
 parser.add_argument(
     "--test_ratio",
     help="Ratio of data to be used for testing between 0 and 1",
     # default=0.2,
-    default=0.,
+    default=0.2,
     required=False,
 )
 parser.add_argument(
     "--val_ratio",
-    help="Ratio of data to be used for validating between 0 and 1",
-    # default=0.0,
-    default=0.1,
+    help="Ratio of data to be used for validating between 0 and 1. Hint: Stardist expects the test images to be in a folder called `val` instead of `test`.",
+    default=0.0,
     required=False,
-)  # stardist expects the test images to be in a folder called `val`, so set this to 0.2 instead of test ratio
-args, _ = parser.parse_known_args()  # Ignore unexpected arguments
+)
+args, _ = parser.parse_known_args()
 
 
 # the root-folder containing the subdirectories/classes/resolutions

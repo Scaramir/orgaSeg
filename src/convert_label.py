@@ -33,7 +33,7 @@ parser.add_argument(
     "-a",
     "--ANNOTATIONS_PATH",
     help="Path to exported annotations of QuPath.",
-    default="../../data/Oranoids for AI-20240330T140242Z-002/Oranoids for AI/All 713 pictures Qupath annotated/export/geojsons",
+    default="../../data/your_QuPath_Project_folder/export/geojsons",
     required=False,
 )
 parser.add_argument(

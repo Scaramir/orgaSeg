@@ -20,7 +20,7 @@ from scipy.signal import convolve2d
 # Parse arguments
 parser = ArgumentParser(
     prog='preprocess_dataset.py',
-    description='Preprocess dataset to make it more uniform.'
+    description='Preprocess dataset to make it more uniform. It crops images into four quadrants and saves them in a new folder. It also resizes the images and masks to a specified size. Optionally, it can replace the background with the median color and remove the vignette from the images.'
 )
 parser.add_argument("-raw_img_path", help="Path to raw image folder.",
                     default="./../data/raw_data/raw_images/first_data_set", required=False)
@@ -30,9 +30,9 @@ parser.add_argument("-o", "--out", help="Path to output folder.",
                     default="./../data/preprocessed/first_data_set", required=False)
 parser.add_argument("-s", "--size", help="Size of output images. 1 is normal size, 0.5 is half size, etc.", 
                     default = 0.25, required=False)
-parser.add_argument("-b", "--bg_elimination", help="Replace background with median color.",
+parser.add_argument("-b", "--bg_elimination", help="Replace background of the images with the median color. Everything is a considered a background that is not an object in the corresponding mask file.",
                     default=False, required=False)
-parser.add_argument("-r", "--replace_vignette", help="Replace vignette with median color.",
+parser.add_argument("-r", "--replace_vignette", help="Tries to replace vignette with median color.",
                     default=False, required=False)
 args, _ = parser.parse_known_args()  # Ignore unexpected arguments
 

@@ -15,13 +15,13 @@ def get_args():
     parser.add_argument(
         "--root",
         type=str,
-        help="Path to root directory",
-        default="S:/studium/beliks_exploiting_dl_seminar/data/Oranoids for AI-20240330T140242Z-002/Oranoids for AI/All 713 pictures Qupath annotated/export/ROIsTif",
+        help="Path to root directory of your ROIsTif folder you should have obtained after exporting the annotations from QuPath.",
+        default="./../../your_QuPath_project_folder/export/ROIsTif",
     )
     parser.add_argument(
         "--target_folder",
         type=str,
-        help="Path to target folder",
+        help="Path to target folder where the individual objects with their class annotations should be stored.",
         default="./../data/data_sets/classification/big_data_set/objects",
     )
     args, _ = parser.parse_known_args()
@@ -29,13 +29,12 @@ def get_args():
 
 
 def get_file_names(root: Path):
-    file_names = [name for name in root.glob("*.tif") if "(" in str(name)]
+    file_names = [name for name in root.glob("*.tif") if "(" in str(name) and ")" in str(name)]
     return file_names
 
 
 # sort file names by whatever is written in '()'
 def sort_file_names(file_names):
-    # TODO: List index out of range -> file names UPDATE: möglicher fix in get_file_names Funktion (exports ohne Klammer ignorieren)
     sorted_file_names = sorted(
         file_names, key=lambda x: x.name.split("(")[1].split(")")[0]
     )

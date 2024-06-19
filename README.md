@@ -1,42 +1,8 @@
 # ORGAnoids_applied_DL_FU
-Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them into 6 morphological groups 
-
-
-# Project Plan
-## List of shit to do
-
-1. Daten in einheitliche Form bringen
-   - Unabhängiges Skript, um es ein mal auszuführen:
-     - [x] alle in TIFFs umwandeln
-     - [x] alle in greyscale speichern, aka nur 1 Farbkanal
-     - [x] optional: Vignette durch Median des Bildes ersetzen? 
-       - [ ] -> Testen, on das so wirklich funktioniert, oder ob überhaupt notwendig
-     - Bilder sinnvoll umbenennen? Vergrößerungsfaktor im Namen behalten. Ansonsten durchnummerieren. Tabelle mit original namen zu neuem namen speichern?
-     - [x] Bilder Vierteln um mehr Bilder zu generien 
-     - [x] die abspeichern
-     - "2891 GREEN P4 D3 aR_0003" und "[...]BR_0000" löschen, weil die nicht gelesen werden können #kaputt
-     - [x] "_small" ignorieren, die waren von anfang an kleiner und im lossy JPEG
-     - [x] "1_tiff_oaf.jpg" ignorieren, weil falsche Auflösung.
-  - Dynamischer Dataloader für classifier bauen:
-     - to_tensor()
-     - Random_crop(514)
-     - Rotation
-     - Spiegeln Horizontal/Vertikal
-     - Normalisieren
-
-2. Ordnerstruktur für nnUNet, stardist, ... aufbauen
-3. Config vom nnUNet in Python/Pytorch-UNet anwenden und da implementieren
-4. Versch. netze vergleichen
-5. Die einzelnen Objekte aus QuPath ziehen mit Class labels
-6. Classifier scripts bauen, trainieren, testen und vergleichen -> Max' Scripts umschreiben und anwenden
-   1. Achtung: 6 Klassen, ungleich verteilt
-   2. auch hier preprocessing nötig (train/test-splitten, normailisieren (MEAN&STD extrahieren), augmentieren, etc.)
-7. Klassifizierung diskutieren
-8. Pipeline bauen, die automatisiert aus den segmentation predictions die position der objekte extrahiert und dann die Klassifizierung auf dem korrespondierenden Bildausschnitt des original-Bildes durchführt. Das Ergebnis wäre eine End-to-End Klassifizierung der Objekte im Bild.
-9.  Im Report vergleichen wir dann die verschiedenen Ergebnisse der 
-   1.  Segmentierung mit IoU, Dice, etc. und die 
-   2.  Klassifizierung mit Accuracy, Precision, etc. und diskutieren die Ergebnisse. Wichtig: Class-Imbalance-Problem hervorheben, weil wir nur 6 Klassen haben und die nicht gleichverteilt sind. -> Gewichtung der Klassen in der Loss-Funktion und in der Accuracy-Funktion. -> F1-Score als Metrik verwenden.
-10. Datenqualität diskutieren
+Applied Deep Learning Seminar @FU Berlin. The purpose iof this project is to segment organoids and classify them into morphological groups.  
+Due to the nature of the data, the project is divided into two parts: segmentation and classification.  
+To obtain ground-truth data to train the supervised segmentation and classification models, an annotation using QuPath is expected.  
+Alternatively, data folders with individual images, their crops containing one object at a time with a file name containing  `(class_name)` and the masks for the whole images can be provided as well. 
 
 
 # Directory structure
@@ -72,8 +38,8 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
 - _convert_label.py_: converts the annotations from geojson to tiff format
 - _preprocess_dataset.py_: preprocesses the data set (raw images and tiff labels) to the preprocessed data set
 
-# Pipeline flow
 
+# Training Pipeline
 ## Export data
 
 - Open project with annotations in QuPath
@@ -90,17 +56,17 @@ Applied Deep Learning Seminar @FU Berlin. Segment organoids and classify them in
 
 ## Train segmentation
 
-- Add image-challaenges-catalog to your album installation.  
-- stardist want the subfolders for train/test to be namesd "images" and "masks", not "labels" -> why do we switched to "labels" in the first place? -> manually rename the folders or change the code that creates the folders
+- Add image-challaenges-catalog to your album.solutions installation.  
+- stardist wants the subfolders for train/test to be namesd "images" and "masks", not "labels"
 - Use segmentation_album.py to train stardist model
-- TODO: Extend segmentation_album.py to train another segmentation model for comparison 
+
 
 ## Train classifier
 
-- Use nn_pytorch.py to train a classifier
+- Use nn_pytorch.py to train a classifier and store the model in the models directory
 
-# Pipelining 
-- TODO: automate the following steps in a pipeline
+# Inference Pipeline 
+
 - Use your segmentation model to predict segmentation masks for a whole directory with new data (album solution: stardist_predict) 
 - Use segmentation_to_classification.py to extract the objects from the segmentation masks and store them in a new directory
 - Use your trained classifier to predict the class of the objects (nn_pytorch.py) and obtain a csv file with the predictions for each object
