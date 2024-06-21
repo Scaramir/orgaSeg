@@ -2,12 +2,10 @@ import cv2
 import numpy as np
 import warnings
 # std
-from pathlib import Path
 from argparse import ArgumentParser
 # 3rd party
 from PIL import Image
 from tqdm import tqdm
-from pipe import filter
 from typing import List
 from pathlib import Path
 from tifffile import imwrite
@@ -19,8 +17,8 @@ from scipy.signal import convolve2d
 # ------------------- #
 # Parse arguments
 parser = ArgumentParser(
-    prog='preprocess_dataset.py',
-    description='Preprocess dataset to make it more uniform. It crops images into four quadrants and saves them in a new folder. It also resizes the images and masks to a specified size. Optionally, it can replace the background with the median color and remove the vignette from the images.'
+    prog="preprocess_dataset.py",
+    description="Preprocess dataset to make it more uniform. It crops images into four quadrants and saves them in a new folder. It also resizes the images and masks to a specified size. Optionally, it can replace the background with the median color and remove the vignette from the images."
 )
 parser.add_argument("-raw_img_path", help="Path to raw image folder.",
                     default="./../data/raw_data/raw_images/first_data_set", required=False)
@@ -29,7 +27,7 @@ parser.add_argument("-raw_mask_path", help="Path to raw annotation folder contai
 parser.add_argument("-o", "--out", help="Path to output folder.",
                     default="./../data/preprocessed/first_data_set", required=False)
 parser.add_argument("-s", "--size", help="Size of output images. 1 is normal size, 0.5 is half size, etc.", 
-                    default = 0.25, required=False)
+                    default=0.25, required=False)
 parser.add_argument("-b", "--bg_elimination", help="Replace background of the images with the median color. Everything is a considered a background that is not an object in the corresponding mask file.",
                     default=False, required=False)
 parser.add_argument("-r", "--replace_vignette", help="Tries to replace vignette with median color.",
@@ -62,10 +60,12 @@ def convert_all_jpg_to_tiff(raw_image_path: Path) -> None:
     Args:
         raw_image_path (Path): path to the folder containing the JPEGs. 
     """
-    for _, img_name in enumerate(tqdm(list(Path.glob(raw_image_path, '*.jpg')), desc="Converting JPEGs to TIFFs")):
+    for _, img_name in enumerate(tqdm(list(Path.glob(raw_image_path, '*.jpg')),
+                                      desc="Converting JPEGs to TIFFs")):
         img = Image.open(img_name)
         img.save(str(img_name).replace('.jpg', '.tiff'))
     return 
+
 
 def four_crop(img: np.ndarray) -> List[np.ndarray]:
     """get quadrants of image by using crops of size h/2, w/2
@@ -85,8 +85,10 @@ def four_crop(img: np.ndarray) -> List[np.ndarray]:
     ]
     return crops
 
+
 def remove_vignette_inplace(img: np.ndarray, kernel_size: int = 5) -> None:  # img shape (h, w)
-    """Removes vignette from image by replacing the vignette with the median color of the image.
+    """
+    Removes vignette from image by replacing the vignette with the median color of the image.
 
     Args:
         img (np.ndarray): image to remove vignette from.
@@ -120,8 +122,7 @@ if len(img_files) == 0:
 if len(img_files) != len(mask_files):
     warnings.warn("Number of image files does not match number of mask files !")
 
-# The hard work
-i = 0
+
 def save_resize_crops(args, OUTPUT_PATH, mask_files, i, img_name, img_crops, mask_crops):
     for j, (img_crop, mask_crop) in enumerate(zip(img_crops, mask_crops)):
         if args.size:
@@ -131,6 +132,9 @@ def save_resize_crops(args, OUTPUT_PATH, mask_files, i, img_name, img_crops, mas
         imwrite(OUTPUT_PATH / "images" / img_name.name.replace('.tiff', f'_{j}.tiff'), img_crop)
         imwrite(OUTPUT_PATH / "masks" / mask_files[i].name.replace('.tiff', f'_{j}.tiff'), mask_crop)
 
+
+# The hard work
+i = 0
 for img_name in tqdm(img_files, desc="Preprocessing images"):
     # if *small* or other weird stuff in name, continue
     if ('small' in img_name.stem) or ('1_tiff_oaf.jpg' in img_name.stem):
@@ -139,7 +143,6 @@ for img_name in tqdm(img_files, desc="Preprocessing images"):
     # More explicit error messages
     try:
         if img_name.stem not in mask_files[i].stem:
-            # TODO: fix warning. 
             warnings.warn(f"Mask file not found for image {img_name.stem}. Probably no matching prefix due to wrong file namings.")
             continue  # don't increase i
     except IndexError as e:

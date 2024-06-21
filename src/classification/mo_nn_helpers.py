@@ -22,10 +22,10 @@ def try_make_dir(d):
     return
 
 
-def get_mean_and_std(data_dir, print=False, leave_pbar=False):
+def get_mean_and_std(data_dir, print_=False, leave_pbar=False):
     """
     Acquire the mean and std color values of all images (RGB-values) in the training set.
-    inpupt: "data_dir" string
+    input: "data_dir" string
     output: mean and std Tensors of size 3 (RGB)
     """
     # Load the training set
@@ -54,14 +54,14 @@ def get_mean_and_std(data_dir, print=False, leave_pbar=False):
     mean = channels_sum / num_batches
     # var[x] = E[x**2] - E[X]**2
     std = (channels_squared_sum / num_batches - mean**2) ** 0.5
-    if print:
+    if print_:
         print("Mean: ", mean, ", Std: ", std)
     return mean, std
 
 
 # Save the whole model
-def save_model(model, dir, model_name):
-    torch.save(model, f"{dir}/{model_name}.pt")
+def save_model(model, dir_, model_name):
+    torch.save(model, f"{dir_}/{model_name}.pt")
 
 
 # Load the whole model
@@ -74,9 +74,9 @@ def load_model(model_path, model_name):
 # ----------------------------------Plots-------------------------------
 # These functions will be used in the train_nn function
 def plot_loss(train_losses, test_losses, output_model_name, output_model_path):
+    """Plot the loss per epoch of the training and test set"""
     import matplotlib.pyplot as plt
 
-    """Plot the loss per epoch of the training and test set"""
     plt.clf()
     plt.plot(train_losses, "-o")
     plt.plot(test_losses, "-o")

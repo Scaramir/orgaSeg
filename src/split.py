@@ -87,7 +87,7 @@ val_ratio = args.val_ratio
 
 
 # Global parameters for the current session:
-# (reproducability)
+# (reproducibility)
 def set_seed(seed=1129142083):
     np.random.seed(seed)
     random.seed(seed)
@@ -98,6 +98,7 @@ def set_seed(seed=1129142083):
 # Disable print
 def block_print():
     sys.stdout = open(os.devnull, "w")
+
 
 # Restore print
 def enable_print():
@@ -113,10 +114,10 @@ for cls in tqdm(class_dirs_to_use, desc="Copy train/test/val sets"):
     # block_print()
     for sub_dir in ["train", "test", "val"]:
         os.makedirs(output_folder_path + "/" + sub_dir + "/" + cls, exist_ok=True)
-    # Creating partitions of the data after shuffeling
+    # Creating partitions of the data after shuffling
     src = pic_folder_path + "/" + cls  # Folder to copy images from
 
-    allFileNames = glob.glob(src + "/*.tiff*")
+    allFileNames = glob.glob(src + "/*.tif*")
 
     # set seed so you get the same splits of every folder and therefore matching images and masks
     set_seed()

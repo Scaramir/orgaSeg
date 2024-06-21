@@ -51,14 +51,14 @@ output_path.mkdir(exist_ok=True, parents=True)
 # ------------------- #
 #     EXTRACTRION     #
 # ------------------- #
-def extract_instances_from_mask(mask: np.ndarray) -> List[np.ndarray]:
+def extract_instances_from_mask(mask: np.ndarray) -> list[list[int]]:
     """Extracts all instances from a mask.
 
     Args:
         mask (np.ndarray): mask to extract instances from.
 
     Returns:
-        List[np.ndarray]: list with cooridnates of the instances' bounding box.
+        List[np.ndarray]: list with coordinates of the instances' bounding box.
     """
     instance_boxes = []
     for i in unique(mask):
@@ -82,12 +82,10 @@ def crop_ori_image_to_instance(
     Returns:
         np.ndarray: cropped original image.
     """
-    return ori_image[instance[0][0] : instance[1][0], instance[0][1] : instance[1][1]]
+    return ori_image[instance[0][0]: instance[1][0], instance[0][1]: instance[1][1]]
 
 
-def do_it_for_all_images(
-    raw_img_path: Path, pred_mask_path: Path, output_path: Path
-) -> None:
+def do_it_for_all_images(raw_img_path: Path, pred_mask_path: Path, output_path: Path) -> None:
     """Extracts all instances from all masks and crops the original image to the instance's bounding box.
 
     Args:

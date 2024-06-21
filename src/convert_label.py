@@ -4,7 +4,6 @@ from pathlib import Path
 from argparse import ArgumentParser
 from json import load
 from typing import List, Tuple, Dict
-
 # 3rd party
 import numpy as np
 from tqdm import tqdm
@@ -15,14 +14,14 @@ from PIL import Image, ImageDraw
 # Constants
 CLASSES = {
     "Filled in",
-    "Filled-in", # apparently the annotator used two different labels for the same class
+    "Filled-in",  # apparently the annotator used two different labels for the same class
     "Early branching",
     "Cyst",
     "Burned out",
     "Ring",
     "Branched",
     "Unsure",
-    "apoptotic", # apparently there is a new class we didn't know about. thanks for wasting hours
+    "apoptotic",  # apparently there is a new class we didn't know about. thanks for wasting hours
 }
 
 # Parse arguments
@@ -92,7 +91,7 @@ def get_size_of_annotation_file(annotation_file: str) -> Tuple[int, int]:
     return img.size
 
 
-def export_tiff(img: List[any], basename: str, details: str) -> None:
+def export_tiff(img: Image.Image, basename: str, details: str) -> None:
     imwrite(
         OUTPUT_PATH / f"{Path(basename).stem}_{details}.tiff",
         np.array(img, dtype=np.uint8),
@@ -118,8 +117,6 @@ for annotation_file_name in tqdm(annotation_file_names, desc="Creating maps"):
     segmentation_step_size = 255 // max(sum(map(len, img_annotations.values())), 1)
     segmentation_fill = 255
     for class_label, class_annotations in img_annotations.items():
-        # if class_label.lower() == "unsure":
-        #     continue
         draw = ImageDraw.Draw(class_maps[class_label.lower()])
         step_size = 255 // len(class_annotations)
         for i, annotation_coordinates in enumerate(class_annotations):
@@ -141,7 +138,6 @@ for annotation_file_name in tqdm(annotation_file_names, desc="Creating maps"):
                 segmentation_fill -= segmentation_step_size
             except ValueError:
                 print(f"Error in {annotation_file_name}. Skipping an objekt, because pixels with size <1 would have to be drawn when creating a mask.")
-
 
     export_tiff(segmentation_map, annotation_file_name, "segmentation")
 
