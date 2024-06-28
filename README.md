@@ -4,11 +4,6 @@ Due to the nature of the data, the project is divided into two parts: segmentati
 To obtain ground-truth data to train the supervised segmentation and classification models, an annotation using QuPath is expected.  
 Alternatively, data folders with individual images, their crops containing one object at a time with a file name containing  `(class_name)` and the masks for the whole images can be provided as well. 
 
-
-
-
-
-
 # Training Pipeline
 
 ![training steps](training.png)
@@ -80,3 +75,6 @@ Alternatively, data folders with individual images, their crops containing one o
 
 - _convert_label.py_: converts the annotations from geojson to tiff format
 - _preprocess_dataset.py_: preprocesses the data set (raw images and tiff labels) to the preprocessed data set
+
+## Acknowledgements
+Thanks to Wei Liang from Technische Universität München for providing the microscopy data set, containing multiple organoids with annotations per image, to test the pipeline on real data.
