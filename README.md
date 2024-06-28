@@ -1,3 +1,6 @@
+ [![DOI](https://zenodo.org/badge/724025191.svg)](https://zenodo.org/doi/10.5281/zenodo.12584999)
+
+
 # orgaSeg: From image annotations to instance classifications
 The purpose of this project is to segment individual organoids from microscopy data and classify them into morphological groups.  
 Due to the nature of the data, the project is divided into two parts: segmentation and classification.  
