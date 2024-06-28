@@ -1,5 +1,5 @@
-# ORGAnoids_applied_DL_FU
-Applied Deep Learning Seminar @FU Berlin. The purpose iof this project is to segment organoids and classify them into morphological groups.  
+# orgaSeg: From image annotations to instance classifications
+The purpose of this project is to segment individual organoids from microscopy data and classify them into morphological groups.  
 Due to the nature of the data, the project is divided into two parts: segmentation and classification.  
 To obtain ground-truth data to train the supervised segmentation and classification models, an annotation using QuPath is expected.  
 Alternatively, data folders with individual images, their crops containing one object at a time with a file name containing  `(class_name)` and the masks for the whole images can be provided as well.  
@@ -94,3 +94,4 @@ We planned on converting this into an easy-to-use pipeline and deploy this as an
 
 ## Acknowledgements
 Thanks to Wei Liang from Technische Universität München for providing the microscopy data set, containing multiple organoids with annotations per image, to test the pipeline on real data.
+This code was created during the Applied Deep Learning Seminar @FU Berlin. 
