@@ -29,22 +29,17 @@ def get_mean_and_std(data_dir, print_=False, leave_pbar=False):
     output: mean and std Tensors of size 3 (RGB)
     """
     # Load the training set
-    train_dataset = {
-        x: datasets.ImageFolder(
-            os.path.join(data_dir, "train"), transform=transforms.ToTensor()
+    train_dataset = datasets.ImageFolder(
+            data_dir, transform=transforms.ToTensor()
         )
-        for x in ["train"]
-    }
-    train_loader = {
-        x: torch.utils.data.DataLoader(
-            dataset=train_dataset[x], batch_size=1, num_workers=0
+
+    train_loader = torch.utils.data.DataLoader(
+            dataset=train_dataset, batch_size=1, num_workers=0
         )
-        for x in ["train"]
-    }
     # Calculate the mean and std of the training set
     channels_sum, channels_squared_sum, num_batches = 0, 0, 0
     for data, _ in tqdm(
-        train_loader["train"],
+        train_loader,
         desc="Calculating mean and std of all RGB-values",
         leave=leave_pbar,
     ):
