@@ -2,44 +2,55 @@
 Applied Deep Learning Seminar @FU Berlin. The purpose iof this project is to segment organoids and classify them into morphological groups.  
 Due to the nature of the data, the project is divided into two parts: segmentation and classification.  
 To obtain ground-truth data to train the supervised segmentation and classification models, an annotation using QuPath is expected.  
-Alternatively, data folders with individual images, their crops containing one object at a time with a file name containing  `(class_name)` and the masks for the whole images can be provided as well. 
+Alternatively, data folders with individual images, their crops containing one object at a time with a file name containing  `(class_name)` and the masks for the whole images can be provided as well.  
+It is worth to mention, that the segmentation step uses a model from an [album catalog](https://gitlab.com/album-app/catalogs/image-challenges-dev), and therefore can be replaced with any other model (e.g. nnUNet, CSBDeep, DeepCell, etc.). We just assumed star-convex polygons/blob-like structures as a start and provide a python script for StarDist2D. If you want to change it, install another album solution from the catalog and run it via CLI or album-gui. 
 
 # Training Pipeline
 
 ![training steps](training.png)
 
+After cloning the repository, make sure to have pytorch2 with GPU support installed. (We will provide the requirements for conda as YAML soon.)  
+Run each of the steps from the directory of the corresponding script.
+
 ## Export data
 
 - Open project with annotations in QuPath
-- Use src/export_geojsons_and_rois.groovy file with instructions on top to export cells & geojsons
-- use sort_qupath_object_output.py to sort the exported data into the correct directory structure for training a classification model 
+- Use `src/export_geojsons_and_rois.groovy` file with instructions on top to export cells & geojsons
+- use `src/sort_qupath_object_output.py` to sort the exported data into the correct directory structure for training a classification model 
 
 ## Preprocess data
 
-- Use convert_label.py to convert geojson files to tiffs
-- Use preprocess_dataset.py to preprocess images and masks
-- Use split.py to split segmentation data in train and test data, and create correct dataset structure for segmentation models
-- Use split.py to split classification data in train and test data, and create correct dataset structure for classification models 
+- Use `src/convert_label.py` to convert geojson files to tiffs
+- Use `src/preprocess_dataset.py` to preprocess images and masks
+- Use `src/split.py` to split segmentation data in train and test data, and create correct dataset structure for segmentation models
+- Use `src/split.py` to split classification data in train and test data, and create correct dataset structure for classification models 
 
 
 ## Train segmentation
 
-- Add image-challaenges-catalog to your album.solutions installation.  
-- stardist wants the subfolders for train/test to be namesd "images" and "masks", not "labels"
-- Use segmentation_album.py to train stardist model
+- Add [image-challenges-catalog](https://gitlab.com/album-app/catalogs/image-challenges-dev) to your [album.solutions](https://album.solutions/) installation.  
+- StarDist expects the subfolders for train/test to be named "images" and "masks" (not "labels")
+- Use `src/segmentation_album.py` to execute StarDist2D with our recommended settings. Alternatively, use the album-gui or CLI to run any other model provided in the catalog
 
 
 ## Train classifier
 
-- Use nn_pytorch.py to train a classifier and store the model in the models directory
+- Use `src/classification/nn_pytorch.py` to train a classifier and store the model in the `models/` directory.  
+- This step can perform a grid search on a few hyperparameters and model architectures and will return the best performing model whjile displaying the results in TensorBoard.
+
 
 # Inference Pipeline 
 
 ![inference steps](inference.png)
 
+## Segmentation
 - Use your segmentation model to predict segmentation masks for a whole directory with new data (album solution: stardist_predict) 
-- Use segmentation_to_classification.py to extract the objects from the segmentation masks and store them in a new directory
-- Use your trained classifier to predict the class of the objects (nn_pytorch.py) and obtain a csv file with the predictions for each object
+
+## Extract Objects
+- Use `src/segmentation_to_instance_classification.py` to extract the objects from the segmentation masks and store them in a new directory
+
+## Classification
+- Use your trained classifier to predict the class of the objects (`src/classification/nn_pytorch.py`) and obtain a csv file with the predictions for each object
 
 
 
@@ -75,6 +86,11 @@ Alternatively, data folders with individual images, their crops containing one o
 
 - _convert_label.py_: converts the annotations from geojson to tiff format
 - _preprocess_dataset.py_: preprocesses the data set (raw images and tiff labels) to the preprocessed data set
+
+
+## Outlook
+We planned on converting this into an easy-to-use pipeline and deploy this as an album catalog, so each individual step gets a GUI and the directory structure is not relying on the working directories of each script to be executed. 
+
 
 ## Acknowledgements
 Thanks to Wei Liang from Technische Universität München for providing the microscopy data set, containing multiple organoids with annotations per image, to test the pipeline on real data.
