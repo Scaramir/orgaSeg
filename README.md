@@ -5,41 +5,14 @@ To obtain ground-truth data to train the supervised segmentation and classificat
 Alternatively, data folders with individual images, their crops containing one object at a time with a file name containing  `(class_name)` and the masks for the whole images can be provided as well. 
 
 
-# Directory structure
-## data/ directory
 
-- _data_sets_: contains the preprocessed and model-specific reordered data sets used for training and testing
-    - _..._: one subdirectory for each model
-      - _test_: contains the test data set
-        - _img_: contains the test images
-          - as tiff files
-        - _mask_: contains the test labels
-          - as tiff files
-      - _train_: contains the train data set
-        - _img_: contains the train images
-          - as tiff files
-        - _mask_: contains the train labels
-          - as tiff files
-- _preprocessed_: contains the preprocessed data sets
-    - _anno_to_mask_: contains the masks generated from the annotations (using the src/convert_label.py script)
-      - as tiff files
-    - _images_: contains the preprocessed images (using the src/preprocess_dataset.py script)
-      - as tiff files
-    - _labels_: contains the labels preprocessed from anno_to_mask (using the src/preprocess_dataset.py script)
-      - as tiff files
-- _raw_data_: contains the raw data sets (unchanged)
-  - _annotations_json_: contains the annotations in geojson format
-    - as geojson files
-  - _raw_images_: contains the raw images
-    - as jpg & tiff files
 
-## src/ directory
-
-- _convert_label.py_: converts the annotations from geojson to tiff format
-- _preprocess_dataset.py_: preprocesses the data set (raw images and tiff labels) to the preprocessed data set
 
 
 # Training Pipeline
+
+![training steps](training.png)
+
 ## Export data
 
 - Open project with annotations in QuPath
@@ -67,6 +40,43 @@ Alternatively, data folders with individual images, their crops containing one o
 
 # Inference Pipeline 
 
+![inference steps](inference.png)
+
 - Use your segmentation model to predict segmentation masks for a whole directory with new data (album solution: stardist_predict) 
 - Use segmentation_to_classification.py to extract the objects from the segmentation masks and store them in a new directory
 - Use your trained classifier to predict the class of the objects (nn_pytorch.py) and obtain a csv file with the predictions for each object
+
+
+
+# Directory structure
+## `data/` directory
+
+- _data_sets_: contains the preprocessed and model-specific reordered data sets used for training and testing
+    - _..._: one subdirectory for each model
+      - _test_: contains the test data set
+        - _img_: contains the test images
+          - as tiff files
+        - _mask_: contains the test labels
+          - as tiff files
+      - _train_: contains the train data set
+        - _img_: contains the train images
+          - as tiff files
+        - _mask_: contains the train labels
+          - as tiff files
+- _preprocessed_: contains the preprocessed data sets
+    - _anno_to_mask_: contains the masks generated from the annotations (using the src/convert_label.py script)
+      - as tiff files
+    - _images_: contains the preprocessed images (using the src/preprocess_dataset.py script)
+      - as tiff files
+    - _labels_: contains the labels preprocessed from anno_to_mask (using the src/preprocess_dataset.py script)
+      - as tiff files
+- _raw_data_: contains the raw data sets (unchanged)
+  - _annotations_json_: contains the annotations in geojson format
+    - as geojson files
+  - _raw_images_: contains the raw images
+    - as jpg & tiff files
+
+## `src/` directory
+
+- _convert_label.py_: converts the annotations from geojson to tiff format
+- _preprocess_dataset.py_: preprocesses the data set (raw images and tiff labels) to the preprocessed data set

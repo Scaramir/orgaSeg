@@ -6,3 +6,4 @@ data/
 src/classification/runs/
 src/classification/nn_pytorch.py
 models/
+*/**/*.ipynb
