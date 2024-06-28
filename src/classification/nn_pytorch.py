@@ -138,9 +138,12 @@ def set_seeds(device="cuda", seed=123420):
 
 
 # ---------------Data Loader------------------
-def load_and_augment_images(pic_folder_path, batch_size, use_normalize=True):
+def load_and_augment_images(pic_folder_path, batch_size, use_normalize=True, sub_dir_name='train'):
     if use_normalize:
-        mean, std = get_mean_and_std(str(pic_folder_path))
+        if sub_dir_name:
+            mean, std = get_mean_and_std(str(pic_folder_path / sub_dir_name))
+        else:
+            mean, std = get_mean_and_std(str(pic_folder_path))
 
     # Data augmentation and normalization for training
     data_transforms = {
@@ -688,7 +691,7 @@ if __name__ == "__main__":
             best_model_settings["model_type"] = best_model_settings["model_type"][0]
 
         dataloaders, class_names, _ = load_and_augment_images(
-            pic_folder_path, best_model_settings["batch_size"], use_normalize
+            pic_folder_path, best_model_settings["batch_size"], use_normalize, sub_dir_name=None
         )
 
         # Load the best model
