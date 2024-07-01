@@ -97,4 +97,4 @@ We planned to convert this into an easy-to-use pipeline and deploy this as an 'a
 
 ## Acknowledgements
 We adjusted and tested the pipeline on a very specific dataset of microscopy images of organoids with QuPath-annotations from @tum [Technische Universität München: Friederike Ebner,  Krzysztof Flisikowski, Qixia Chan, Theresa Pauli and Wei Liang (Corresponding Person)]. Thank you for providing this dataset! Therefore, the preprocessing steps are adjusted to these images (4032x3040 px).  
-This project started as an Applied Deep Learning Seminar @Freie Universität Berlin. 
+This project sprouted from the seminar "Deep Learning for biomedical applications" of Prof. Dr. rer. nat. Vitaly Belik @Freie Universität Berlin. 
