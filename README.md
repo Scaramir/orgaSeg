@@ -92,9 +92,9 @@ Run each of the steps from the directory of the corresponding script.
 
 
 ## Outlook
-We planned on converting this into an easy-to-use pipeline and deploy this as an album catalog, so each individual step gets a GUI and the directory structure is not relying on the working directories of each script to be executed. 
+We planned to convert this into an easy-to-use pipeline and deploy this as an 'album catalog', so each individual step gets a GUI and the directory structure is not relying on the working directories of each script to be executed. This shall increase replicability and usability.  
 
 
 ## Acknowledgements
-Thanks to Wei Liang from Technische Universität München for providing the microscopy data set, containing multiple organoids with annotations per image, to test the pipeline on real data.
-This code was created during the Applied Deep Learning Seminar @FU Berlin. 
+We adjusted and tested the pipeline on a very specific dataset of microscopy images of organoids with QuPath-annotations from @tum [Technische Universität München: Friederike Ebner,  Krzysztof Flisikowski, Qixia Chan, Theresa Pauli and Wei Liang (Corresponding Person)]. Thank you for providing this dataset! Therefore, the preprocessing steps are adjusted to these images (4032x3040 px).  
+This project started as an Applied Deep Learning Seminar @Freie Universität Berlin. 
