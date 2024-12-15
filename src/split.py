@@ -23,19 +23,22 @@ parser = ArgumentParser(
 parser.add_argument(
     "--pic_folder_path",
     help="The root-folder containing the required folder, where each folder to be split should contain the images.",
-    default="./../data/preprocessed/big_data_set",
+    # default="./../data/preprocessed/big_data_set",
+    default="./../data/data_sets/classification/verified_objects/objects",
     required=False,
 )
 parser.add_argument(
     "--output_folder_path",
     help="The output path to write the images to",
-    default="./../data/data_sets/stardist/big_data_set",
+    # default="./../data/data_sets/stardist/big_data_set",
+    default="./../data/data_sets/classification/verified_objects",
     required=False,
 )
 parser.add_argument(
     "--class_dirs_to_use",
     help="Folder names to include in the data sets (classes or subdirectories to split into train/test/val sets)",
-    default=["images", "masks"],
+    # default=["images", "masks"],
+    default=["Branched", "Burned out", "Cyst", "Early Branching", "Filled in", "Ring"],
     nargs="*",
     required=False,
 )
