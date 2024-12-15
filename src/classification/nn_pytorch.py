@@ -87,8 +87,8 @@ def parse_args():
     parser.add_argument(
         "--pic_folder_path",
         type=Path,
-        default=Path("./../../data/data_sets/classification/big_data_set"),
-        help="Path to the picture folder. It contains a `train` and a `test` folder with the pictures.",
+        default=Path("./../../data/data_sets/classification/verified_objects"),
+        help="Path to the picture folder. It contains a `train` and a `test` folder with the pictures for training. To predict new images, place them in a folder called `val` that exists within this path.",
     )
     parser.add_argument(
         "--input_model_path", type=Path, default=None, help="Path to your input model"
@@ -99,7 +99,7 @@ def parse_args():
     parser.add_argument(
         "--output_model_path",
         type=Path,
-        default=Path("./../../models"),
+        default=Path("./../../models/verified_objects"),
         help="Path to the output model",
     )
     parser.add_argument(
@@ -257,7 +257,8 @@ def get_model(
         try:
             model.fc = nn.Sequential(
                 nn.Linear(model.fc.in_features, 256),
-                nn.Dropout(p=0.4), # not inplace?
+                nn.Dropout(p=0.3), # not inplace?
+                nn.ReLU(),
                 nn.Linear(256, 100),
                 nn.ReLU(inplace=True),
                 nn.Linear(100, num_classes),
@@ -265,7 +266,8 @@ def get_model(
         except:
             model.classifier = nn.Sequential(
                 nn.Linear(model.classifier.in_features, 256),
-                nn.Dropout(p=0.4, inplace=True),
+                nn.Dropout(p=0.3, inplace=True),
+                nn.ReLU(),
                 nn.Linear(256, 100),
                 nn.ReLU(inplace=True),
                 nn.Linear(100, num_classes)
@@ -356,7 +358,7 @@ def train_loop(model, dataloaders, criterion, optimizer, device="cuda"):
         correct += (predicted == labels).sum().item()
     # returns
     train_loss /= len(dataloaders["train"])
-    train_accuracy = 100 * correct / total
+    train_accuracy = 100 * correct / total # TODO: change to F1-Score or similar for multi-label per image classification tasks
     return train_loss, train_accuracy, predicted, labels
 
 
@@ -413,7 +415,7 @@ def hyperparameter_search(
         )
     if num_epochs > 8:
         print(
-            "Warning: Number of epochs is greater than 8. It will be capped at 10 so find the best configuration faster. You can retrain the best model with more epochs later on if needed."
+            "Warning: Number of epochs is greater than 8. It will be capped at 8 to find the best configuration faster. You can retrain the best model with more epochs later on if needed."
         )
         num_epochs = 8
 
@@ -456,7 +458,7 @@ def hyperparameter_search(
                 )
 
                 # NOTE: technically hyperparameter, but we're sticking to those for now
-                criterion = nn.CrossEntropyLoss()
+                criterion = nn.CrossEntropyLoss() # BCEwithLogitsLoss for multi-label per image
                 optimizer = optim.Adamax(model.parameters(), lr=learning_rate, weight_decay=3e-4)
                 scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
@@ -602,7 +604,9 @@ def predict_folder(
     all_predicted = [class_names[prediction] for prediction in all_predicted]
     # save prediction and image name to csv
     df = pd.DataFrame({"image_name": image_names, "label": all_predicted})
-    df.to_csv("./../../data/results/predictions.csv", index=False)
+    results_path = Path("./../../data/results/predictions.csv")
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(results_path, index=False)
     return
 
 
@@ -691,7 +695,7 @@ if __name__ == "__main__":
             best_model_settings["model_type"] = best_model_settings["model_type"][0]
 
         dataloaders, class_names, _ = load_and_augment_images(
-            pic_folder_path, best_model_settings["batch_size"], use_normalize, sub_dir_name=None
+            pic_folder_path, best_model_settings["batch_size"], use_normalize, sub_dir_name="test"
         )
 
         # Load the best model
@@ -702,7 +706,7 @@ if __name__ == "__main__":
         predict_folder(
             trained_model,
             class_names,
-            pic_folder_path,
+            pic_folder_path / "val",
             device=device,
             use_normalize=use_normalize,
         )
